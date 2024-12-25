@@ -38,8 +38,8 @@ RUN chmod +x /start.sh
 EXPOSE 5901
 EXPOSE 6080
 
-COPY launch_and_move.py /
-RUN chmod +x /launch_and_move.py
+COPY launch_and_move3.py /
+RUN chmod +x /launch_and_move3.py
 
 CMD ["/start.sh"]
 
