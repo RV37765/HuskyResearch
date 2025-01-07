@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
 
 # Set up VNC password
 RUN mkdir -p ~/.vnc && \
-    echo "password" | vncpasswd -f > ~/.vnc/passwd && \
+    echo ${VNC_assword} | vncpasswd -f > ~/.vnc/passwd && \
     chmod 600 ~/.vnc/passwd
 
 # Set up Xauthority
