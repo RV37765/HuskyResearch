@@ -86,7 +86,7 @@ class HuskyController:
 
 def main():
     # Launch Gazebo with Husky
-    launch_cmd = 'roslaunch husky_gazebo husky_playpen.launch'
+    launch_cmd = 'roslaunch husky_gazebo husky_playpen.launch world_name:=/opt/ros/noetic/share/husky_gazebo/worlds/Rowplaypen.world'
     subprocess.Popen(launch_cmd.split())
     rospy.sleep(10)  # Give more time for Gazebo to load
     
