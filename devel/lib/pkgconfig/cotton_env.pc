@@ -1,0 +1,8 @@
+prefix=/home/pcplab/catkin_ws/devel
+
+Name: cotton_env
+Description: Description of cotton_env
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

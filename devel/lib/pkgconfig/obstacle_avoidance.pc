@@ -1,0 +1,8 @@
+prefix=/home/pcplab/catkin_ws/devel
+
+Name: obstacle_avoidance
+Description: Description of obstacle_avoidance
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

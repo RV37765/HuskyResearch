@@ -1,0 +1,13 @@
+<launch>
+  <!-- Convert PointCloud -> LaserScan -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pcl_to_scan">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+  </node>
+
+  <!-- Your obstacle avoidance node -->
+  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen"/>
+
+  <!-- RViz -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find obstacle_avoidance)/rviz/pointcloud_view.rviz"/>
+</launch>

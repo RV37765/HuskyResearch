@@ -1,0 +1,8 @@
+prefix=/home/pcplab/catkin_ws/install
+
+Name: uga10_husky
+Description: Description of uga10_husky
+Version: 0.0.1
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

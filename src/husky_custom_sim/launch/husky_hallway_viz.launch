@@ -1,0 +1,24 @@
+<launch>
+  <!-- Start Gazebo with your hallway world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/hallway_test.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn Husky -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- Convert Velodyne PointCloud2 -> LaserScan -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+  </node>
+
+  <!-- Your avoidance node -->
+  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen"/>
+
+  <!-- RViz for visualization -->
+  <node pkg="rviz" type="rviz" name="rviz"/>
+</launch>

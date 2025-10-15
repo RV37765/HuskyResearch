@@ -1,0 +1,19 @@
+<launch>
+  <!-- Start Husky in Gazebo -->
+  <include file="$(find husky_gazebo)/launch/husky_playpen.launch"/>
+
+  <!-- Convert Velodyne PointCloud2 -> LaserScan -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="min_height" value="-0.2"/>
+    <param name="max_height" value="0.2"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <!-- Your avoidance node (built in the obstacle_avoidance package) -->
+  <!--
+  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen"/>
+  -->
+</launch>

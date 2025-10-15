@@ -1,0 +1,9 @@
+<launch>
+  <!-- Teleop joystick -->
+  <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_twist_joy" output="screen">
+    <rosparam file="$(find obstacle_avoidance)/config/ps4_teleop.yaml" command="load"/>
+  </node>
+
+  <!-- PS4 trigger node -->
+  <node pkg="obstacle_avoidance" type="ps4_obstacle_trigger.py" name="ps4_obstacle_trigger" output="screen"/>
+</launch>

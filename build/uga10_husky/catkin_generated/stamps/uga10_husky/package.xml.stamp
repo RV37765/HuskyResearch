@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>uga10_husky</name>
+  <version>0.0.1</version>
+  <description>This is the customization repo for the UGA10 Husky. The robot is equipped with a high performance PC, UM7 IMU, Velodyne VLP-16 3D lidar, SwiftNav Duro GPS, Microhard BulletPlusAC-CAT12 WiFi and cellular radio, and base station with RTK.</description>
+  <maintainer email="zanderson@clearpathrobotics.com">Zac Anderson</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!--
+    Add dependencies here
+    At minimum you should include the _robot and _description packages for the base
+    platform.
+    e.g. husky_description and husky_robot
+  -->
+  <exec_depend>husky_description</exec_depend>
+  <exec_depend>husky_robot</exec_depend>
+
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>

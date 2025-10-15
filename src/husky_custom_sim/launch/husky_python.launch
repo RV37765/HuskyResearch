@@ -1,0 +1,18 @@
+<launch>
+  <!-- Start Gazebo with your hallway world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/hallway_test.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn Husky -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- RViz visualization -->
+  <include file="$(find husky_viz)/launch/view_robot.launch"/>
+
+  <!-- Python obstacle avoidance node -->
+  <node pkg="obstacle_avoidance" type="husky_controller.py" name="husky_controller" output="screen"/>
+</launch>
