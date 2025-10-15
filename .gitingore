@@ -1,0 +1,10 @@
+# ROS / Catkin build artifacts
+build/
+devel/
+logs/
+
+# Python and editor junk
+*.pyc
+*.swp
+*.swo
+__pycache__/
