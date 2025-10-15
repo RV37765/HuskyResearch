@@ -1,0 +1,19 @@
+Launch Commands:
+
+
+-------------------PS4 Pipeline Launch------------------
+
+- Turn on husky and wait a few minutes
+
+
+                   ---On Jetson---
+export ROS_MASTER_URI=http://192.168.131.1:11311
+export ROS_IP=192.168.131.137
+roslaunch obstacle_avoidance ps4_pipeline.launch --screen
+---> Options: run
+---> Share: kill
+
+
+
+-------------------Simulation Launch-----------------
+
