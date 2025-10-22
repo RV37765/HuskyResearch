@@ -188,8 +188,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     int front_idx        = idx_from_angle(M_PI);               // now forward points backward
     int front_left_idx   = idx_from_angle(M_PI - (M_PI / 180.0 * 35.0));
     int front_right_idx  = idx_from_angle(-M_PI + (M_PI / 180.0 * 35.0));
-    int left_idx         = idx_from_angle(M_PI / 2.0);         // stays same
-    int right_idx        = idx_from_angle(-M_PI / 2.0);        // stays same
+    int right_idx         = idx_from_angle(M_PI / 2.0);         // stays same
+    int left_idx        = idx_from_angle(-M_PI / 2.0);        // stays same
 
 
    // --- Compute 5 averaged distances ---
