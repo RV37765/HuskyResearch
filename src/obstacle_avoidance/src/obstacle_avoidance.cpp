@@ -7,7 +7,7 @@
 //Change these constants for vehicle kinematics
 #define DEFAULT_LINEAR 0.4	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
-#define DISTANCE 0.91		       //Maximum distance to consider point an obstacle
+#define DISTANCE 1.1		       //Maximum distance to consider point an obstacle
 #define NEW_LINEARX 0.3	       //
 #define TURN_ANGULAR_SPEED 0.75	   //Turn speed
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
@@ -63,8 +63,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     static int clear_count = 0;
 
     const float HARD_STOP_DIST = 0.8;
-    const float GO_CLEARANCE   = .91;
-    const float SIDE_CLEARANCE = .65;
+    const float GO_CLEARANCE   = .97;
+    const float SIDE_CLEARANCE = .85;
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
     if (front_avg < HARD_STOP_DIST || front_left_avg < HARD_STOP_DIST || front_right_avg < HARD_STOP_DIST)
@@ -79,8 +79,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     {
         // --- 2. Normal behavior: check whether anything blocks forward progress ---
         bool front_blocked = (front_avg < DISTANCE ||
-                              front_left_avg < (DISTANCE - .1) ||
-                              front_right_avg < (DISTANCE - .1);
+                              front_left_avg < (DISTANCE) ||
+                              front_right_avg < (DISTANCE);
 
         if (!front_blocked)
         {
@@ -88,7 +88,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
                 left_avg > SIDE_CLEARANCE && right_avg > SIDE_CLEARANCE)
             {
                 clear_count++;
-                if (clear_count >= 3)
+                if (clear_count >= 7)
                 {
                     case_desc = "Case: Clear ahead → move forward";
                     linearx = NEW_LINEARX;
@@ -188,8 +188,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     int front_idx        = idx_from_angle(M_PI);               // now forward points backward
     int front_left_idx   = idx_from_angle(M_PI - (M_PI / 180.0 * 35.0));
     int front_right_idx  = idx_from_angle(-M_PI + (M_PI / 180.0 * 35.0));
-    int right_idx         = idx_from_angle(M_PI / 2.0);         // stays same
-    int left_idx        = idx_from_angle(-M_PI / 2.0);        // stays same
+    int left_idx         = idx_from_angle(M_PI / 2.0);         // stays same
+    int right_idx        = idx_from_angle(-M_PI / 2.0);        // stays same
 
 
    // --- Compute 5 averaged distances ---
