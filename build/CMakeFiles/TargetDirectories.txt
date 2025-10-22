@@ -35,14 +35,6 @@
 /home/pcplab/catkin_ws/build/gtest/googletest/CMakeFiles/test.dir
 /home/pcplab/catkin_ws/build/gtest/googletest/CMakeFiles/gtest_main.dir
 /home/pcplab/catkin_ws/build/gtest/googletest/CMakeFiles/gtest.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/install/strip.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/install/local.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/install.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/list_install_components.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/rebuild_cache.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/edit_cache.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/test.dir
-/home/pcplab/catkin_ws/build/uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir
 /home/pcplab/catkin_ws/build/husky_custom_sim/CMakeFiles/install/local.dir
 /home/pcplab/catkin_ws/build/husky_custom_sim/CMakeFiles/rebuild_cache.dir
 /home/pcplab/catkin_ws/build/husky_custom_sim/CMakeFiles/edit_cache.dir

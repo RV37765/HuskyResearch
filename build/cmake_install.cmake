@@ -146,7 +146,6 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/pcplab/catkin_ws/build/gtest/cmake_install.cmake")
-  include("/home/pcplab/catkin_ws/build/uga10_husky/cmake_install.cmake")
   include("/home/pcplab/catkin_ws/build/husky_custom_sim/cmake_install.cmake")
   include("/home/pcplab/catkin_ws/build/obstacle_avoidance/cmake_install.cmake")
 

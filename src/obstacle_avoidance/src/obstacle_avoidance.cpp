@@ -69,7 +69,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     // --- 1. Emergency hard stop if anything close in the forward arc ---
     if (front_avg < HARD_STOP_DIST || front_left_avg < HARD_STOP_DIST || front_right_avg < HARD_STOP_DIST)
     {
-        case_desc = "Case: HARD STOP — obstacle very close!";
+        case_desc = "Case: HARD STOP — obstacle in front VERY CLOSE";
         linearx = 0.0;
         angularz = (left_avg > right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
         g_last_turn = (left_avg > right_avg) ? +1 : -1;
@@ -79,8 +79,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     {
         // --- 2. Normal behavior: check whether anything blocks forward progress ---
         bool front_blocked = (front_avg < DISTANCE ||
-                              front_left_avg < DISTANCE ||
-                              front_right_avg < DISTANCE);
+                              front_left_avg < (DISTANCE - .1) ||
+                              front_right_avg < (DISTANCE - .1);
 
         if (!front_blocked)
         {
@@ -123,13 +123,13 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
             clear_count = 0;
             if (front_left_avg > front_right_avg)
             {
-                case_desc = "Case: Front blocked → turn left (more diagonal space)";
+                case_desc = "Case: Front blocked → turn left (more space)";
                 angularz = +TURN_ANGULAR_SPEED;
                 g_last_turn = +1;
             }
             else
             {
-                case_desc = "Case: Front blocked → turn right (more diagonal space)";
+                case_desc = "Case: Front blocked → turn right (more space)";
                 angularz = -TURN_ANGULAR_SPEED;
                 g_last_turn = -1;
             }
