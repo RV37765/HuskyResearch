@@ -63,7 +63,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     static int clear_count = 0;
 
     const float HARD_STOP_DIST = 0.8;
-    const float GO_CLEARANCE   = .97;
+    const float GO_CLEARANCE   = ;
     const float SIDE_CLEARANCE = .85;
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
@@ -185,9 +185,9 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 
  
     // LiDAR flipped 180° → reverse all signs
-    int front_idx        = idx_from_angle(M_PI);               // now forward points backward
-    int front_left_idx   = idx_from_angle(M_PI - (M_PI / 180.0 * 35.0));
-    int front_right_idx  = idx_from_angle(-M_PI + (M_PI / 180.0 * 35.0));
+    int front_idx        = idx_from_angle(0.0);               // now forward points backward
+    int front_left_idx   = idx_from_angle(M_PI / (180.0 * 35.0));
+    int front_right_idx  = idx_from_angle(-M_PI / (180.0 * 35.0));
     int left_idx         = idx_from_angle(M_PI / 2.0);         // stays same
     int right_idx        = idx_from_angle(-M_PI / 2.0);        // stays same
 
