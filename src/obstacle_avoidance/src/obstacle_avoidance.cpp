@@ -63,7 +63,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     static int clear_count = 0;
 
     const float HARD_STOP_DIST = 0.8;
-    const float GO_CLEARANCE   = ;
+    const float GO_CLEARANCE   = 1.4;
     const float SIDE_CLEARANCE = .85;
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
