@@ -3,7 +3,7 @@
 #include <geometry_msgs/Twist.h>
 #include <vector>
 #include <string>
-#include <visualization_msgs/Marker.h>
+
 
 
 
@@ -39,7 +39,7 @@ ros::Time g_escape_end;
 std::vector<std::pair<int,int>> OCCLUSION_MASKS = {};
 
 ros::Publisher pub;
-ros::Publisher marker_pub;
+
 
 
 
@@ -69,7 +69,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
 
     const float HARD_STOP_DIST = 0.8;
     const float GO_CLEARANCE   = 1.5;
-    const float SIDE_CLEARANCE = .85;
+    
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
     if (front_avg < HARD_STOP_DIST || front_left_avg < HARD_STOP_DIST || front_right_avg < HARD_STOP_DIST)
@@ -89,11 +89,10 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
 
         if (!front_blocked)
         {
-            if (front_avg > GO_CLEARANCE && front_left_avg > GO_CLEARANCE && front_right_avg > GO_CLEARANCE &&
-                left_avg > SIDE_CLEARANCE && right_avg > SIDE_CLEARANCE)
+            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.3) && front_right_avg > (GO_CLEARANCE-0.3))
             {
                 clear_count++;
-                if (clear_count >= 5)
+                if (clear_count >= 2)
                 {
                     case_desc = "Case: Clear ahead -> ---move forward---";
                     linearx = NEW_LINEARX;
@@ -203,31 +202,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     float front_right_avg  = avg_window(front_right_idx, FRONT_WINDOW_DEG);
     float left_avg         = avg_window(left_idx,        SIDE_WINDOW_DEG);
     float right_avg        = avg_window(right_idx,       SIDE_WINDOW_DEG);
-    auto make_marker = [&](std::string name, double angle, float range, float r, float g, float b) {
-        visualization_msgs::Marker m;
-        m.header.frame_id = msg->header.frame_id;  // usually "velodyne" or "base_link"
-        m.header.stamp = ros::Time::now();
-        m.ns = name;
-        m.id = static_cast<int>(angle * 100);
-        m.type = visualization_msgs::Marker::SPHERE;
-        m.action = visualization_msgs::Marker::ADD;
-
-        // Position marker at given range + angle
-        m.pose.position.x = range * cos(angle);
-        m.pose.position.y = range * sin(angle);
-        m.pose.position.z = 0.0;
-        m.scale.x = m.scale.y = m.scale.z = 0.2;  // size of sphere
-        m.color.a = 1.0;
-        m.color.r = r; m.color.g = g; m.color.b = b;
-
-        marker_pub.publish(m);
-    };
-
-    make_marker("front",        0.0,               front_avg,        1, 0, 0);   // red
-    make_marker("front_left",   M_PI / 4.0,        front_left_avg,   0, 1, 0);   // green
-    make_marker("front_right", -M_PI / 4.0,        front_right_avg,  0, 0, 1);   // blue
-    make_marker("left",         M_PI / 2.0,        left_avg,         1, 1, 0);   // yellow
-    make_marker("right",       -M_PI / 2.0,        right_avg,        1, 0, 1);   // magenta
+   
 
     // Keep your back-left/right mins if you still log them; not needed for decisions now
     std::vector<float> backLeft, backRight;
@@ -259,7 +234,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle nh;
 	pub = nh.advertise<geometry_msgs::Twist>("/husky_velocity_controller/cmd_vel", 100);
 	ros::Subscriber sub = nh.subscribe("/scan", 10, laserCallback);
-    marker_pub = nh.advertise<visualization_msgs::Marker>("region_markers", 10);
+   
 	ros::spin();
 	return 0;
 }
