@@ -5,6 +5,5 @@
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
 subdirs("gtest")
-subdirs("uga10_husky")
 subdirs("husky_custom_sim")
 subdirs("obstacle_avoidance")

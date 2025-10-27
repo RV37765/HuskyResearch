@@ -54,7 +54,6 @@ CMAKE_BINARY_DIR = /home/pcplab/catkin_ws/build
 
 # The main recursive "all" target.
 all: gtest/all
-all: uga10_husky/all
 all: husky_custom_sim/all
 all: obstacle_avoidance/all
 
@@ -62,7 +61,6 @@ all: obstacle_avoidance/all
 
 # The main recursive "preinstall" target.
 preinstall: gtest/preinstall
-preinstall: uga10_husky/preinstall
 preinstall: husky_custom_sim/preinstall
 preinstall: obstacle_avoidance/preinstall
 
@@ -75,7 +73,6 @@ clean: CMakeFiles/clean_test_results.dir/clean
 clean: CMakeFiles/tests.dir/clean
 clean: CMakeFiles/download_extra_data.dir/clean
 clean: gtest/clean
-clean: uga10_husky/clean
 clean: husky_custom_sim/clean
 clean: obstacle_avoidance/clean
 
@@ -197,24 +194,6 @@ obstacle_avoidance/clean: obstacle_avoidance/CMakeFiles/sensor_msgs_generate_mes
 obstacle_avoidance/clean: obstacle_avoidance/CMakeFiles/sensor_msgs_generate_messages_eus.dir/clean
 
 .PHONY : obstacle_avoidance/clean
-
-#=============================================================================
-# Directory level rules for directory uga10_husky
-
-# Recursive "all" directory target.
-uga10_husky/all:
-
-.PHONY : uga10_husky/all
-
-# Recursive "preinstall" directory target.
-uga10_husky/preinstall:
-
-.PHONY : uga10_husky/preinstall
-
-# Recursive "clean" directory target.
-uga10_husky/clean: uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/clean
-
-.PHONY : uga10_husky/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/doxygen.dir
@@ -459,33 +438,6 @@ gtest: gtest/googletest/CMakeFiles/gtest.dir/rule
 gtest/googletest/CMakeFiles/gtest.dir/clean:
 	$(MAKE) -f gtest/googletest/CMakeFiles/gtest.dir/build.make gtest/googletest/CMakeFiles/gtest.dir/clean
 .PHONY : gtest/googletest/CMakeFiles/gtest.dir/clean
-
-#=============================================================================
-# Target rules for target uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir
-
-# All Build rule for target.
-uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/all:
-	$(MAKE) -f uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/build.make uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/depend
-	$(MAKE) -f uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/build.make uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pcplab/catkin_ws/build/CMakeFiles --progress-num= "Built target _catkin_empty_exported_target"
-.PHONY : uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/all
-
-# Build rule for subdir invocation for target.
-uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pcplab/catkin_ws/build/CMakeFiles 0
-	$(MAKE) -f CMakeFiles/Makefile2 uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pcplab/catkin_ws/build/CMakeFiles 0
-.PHONY : uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/rule
-
-# Convenience name for target.
-_catkin_empty_exported_target: uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/rule
-
-.PHONY : _catkin_empty_exported_target
-
-# clean rule for target.
-uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/clean:
-	$(MAKE) -f uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/build.make uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/clean
-.PHONY : uga10_husky/CMakeFiles/_catkin_empty_exported_target.dir/clean
 
 #=============================================================================
 # Target rules for target husky_custom_sim/CMakeFiles/std_msgs_generate_messages_py.dir

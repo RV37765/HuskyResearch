@@ -1,2 +1,2 @@
-husky_custom_sim:obstacle_avoidance:uga10_husky
+husky_custom_sim:obstacle_avoidance
 -DCATKIN_DEVEL_PREFIX=/home/pcplab/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/pcplab/catkin_ws/install -G Unix Makefiles

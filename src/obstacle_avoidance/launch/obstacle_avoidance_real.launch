@@ -9,5 +9,5 @@
   <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen"/>
 
   <!-- RViz -->
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find obstacle_avoidance)/rviz/pointcloud_view.rviz"/>
+  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find obstacle_avoidance)/rviz/jetson_default.rviz"/> -->
 </launch>
