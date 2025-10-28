@@ -12,7 +12,7 @@
 #define DEFAULT_LINEAR 0.4	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
 #define DISTANCE 1.2		       //Maximum distance to consider point an obstacle
-#define NEW_LINEARX 0.3	       //
+#define NEW_LINEARX 0.4	       //
 #define TURN_ANGULAR_SPEED 0.75	   //Turn speed
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
 #define BACK_ANGLE_PROPORTION_THRESHOLD 0.33 //0.24 = 60 deg / 270 , 0.33 = 90 deg / 270
@@ -26,7 +26,6 @@
 #define TURN_TIME 0.8                  // sec to turn during escape
 
 // ---- Global state for stuck detection ----
-int g_stuck_count = 0;          // Counts how many cycles robot appears stuck
 int g_last_turn   = 1;          // Remember last turn direction (+1 left, -1 right)
 int g_clear_count = 0;   // counts consecutive clear cycles before moving forward
 
@@ -99,8 +98,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
                     angularz = 0.0;
 
                     // corridor-centering bias
-                    if (left_avg < right_avg - 0.3)      angularz -= 0.2;
-                    else if (right_avg < left_avg - 0.3) angularz += 0.2;
+                    if (left_avg < right_avg - 0.3)      angularz += 0.2;
+                    else if (right_avg < left_avg - 0.3) angularz -= 0.2;
 
                     // clamp steering
                     if (angularz > 0.5)  angularz = 0.5;
@@ -159,6 +158,10 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     int size = ranges.size();
     if (size == 0) return;
 
+    static int iteration_count = 0;   //Iteration Counter
+    iteration_count++;
+
+
     auto valid = [&](int idx) {
         if (idx < 0 || idx >= size) return false;
         // occlusion mask filter
@@ -179,8 +182,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
         return (count > 0) ? (float)(sum / count) : msg->range_max;
     };
 
-    // Index helpers: center/front is pi/2 ahead if 0 is -pi; simpler: use half for front
-    // int front_idx = size / 2;                     // assumes angle_min ~ -pi, angle_max ~ +pi
+    // int front_idx = size / 2;                     
+    // assumes angle_min ~ -pi, angle_max ~ +pi
     auto idx_from_angle = [&](double angle_rad){
 			    if (angle_rad < msg->angle_min) angle_rad = msg->angle_min;
 			    if (angle_rad > msg->angle_max) angle_rad = msg->angle_max;
@@ -188,7 +191,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 			  };
 
  
-    // LiDAR flipped 180° → reverse all signs
+
     int front_idx        = idx_from_angle(0.0);               
     int front_right_idx   = idx_from_angle(M_PI / 4);
     int front_left_idx  = idx_from_angle(-M_PI / 4);
@@ -196,22 +199,13 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     int right_idx        = idx_from_angle(-M_PI / 2.0);       
 
 
-   // --- Compute 5 averaged distances ---
+    // Determines width of each window, based on center angle
     float front_avg        = avg_window(front_idx,       FRONT_WINDOW_DEG);
     float front_left_avg   = avg_window(front_left_idx,  FRONT_WINDOW_DEG);
     float front_right_avg  = avg_window(front_right_idx, FRONT_WINDOW_DEG);
     float left_avg         = avg_window(left_idx,        SIDE_WINDOW_DEG);
     float right_avg        = avg_window(right_idx,       SIDE_WINDOW_DEG);
-   
-
-    // Keep your back-left/right mins if you still log them; not needed for decisions now
-    std::vector<float> backLeft, backRight;
-    int leftLimit  = BACK_ANGLE_PROPORTION_THRESHOLD * size;
-    int rightLimit = size - leftLimit;
-    for (int i = 0; i <= leftLimit; ++i) if (valid(i)) backLeft.push_back(ranges[i]);
-    for (int i = rightLimit; i < size; ++i) if (valid(i)) backRight.push_back(ranges[i]);
-    float minBackLeft  = backLeft.empty()  ? msg->range_max : min_element(backLeft);
-    float minBackRight = backRight.empty() ? msg->range_max : min_element(backRight);
+    
 
     // Decide and publish
     computeDirection(front_avg, front_left_avg, front_right_avg, left_avg, right_avg);
@@ -222,7 +216,9 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     ROS_INFO("avg range on front-left: %.3f", front_left_avg);
     ROS_INFO("avg range on left:  %.3f", left_avg);
     ROS_INFO("avg range on right: %.3f", right_avg);
-   
+    if (iteration_count % 50 == 0) {
+        ROS_INFO("Iteration #%d", iteration_count);
+    }
 }
 
 
