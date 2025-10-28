@@ -216,9 +216,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     ROS_INFO("avg range on front-left: %.3f", front_left_avg);
     ROS_INFO("avg range on left:  %.3f", left_avg);
     ROS_INFO("avg range on right: %.3f", right_avg);
-    if (iteration_count % 50 == 0) {
-        ROS_INFO("Iteration #%d", iteration_count);
-    }
+    ROS_INFO("Iteration #%d", iteration_count);
+    
 }
 
 

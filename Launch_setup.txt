@@ -14,7 +14,7 @@ roslaunch obstacle_avoidance ps4_pipeline.launch --screen
 ---> Share: kill
 
 
-ctrl-c, or red button if conenction dies or bheavior is irradic
+ctrl-c, or red button if conenction dies or behavior is irradic
 
 
 
