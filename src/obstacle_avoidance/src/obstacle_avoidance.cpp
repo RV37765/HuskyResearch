@@ -193,8 +193,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
  
 
     int front_idx        = idx_from_angle(0.0);               
-    int front_right_idx   = idx_from_angle(M_PI / 4);
-    int front_left_idx  = idx_from_angle(-M_PI / 4);
+    int front_left_idx   = idx_from_angle(M_PI / 4);
+    int front_right_idx  = idx_from_angle(-M_PI / 4);
     int left_idx         = idx_from_angle(M_PI / 2.0);         
     int right_idx        = idx_from_angle(-M_PI / 2.0);       
 
@@ -214,8 +214,8 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     ROS_INFO("avg range on front: %.3f", front_avg);
     ROS_INFO("avg range on front-right: %.3f", front_right_avg);
     ROS_INFO("avg range on front-left: %.3f", front_left_avg);
-    ROS_INFO("avg range on left:  %.3f", left_avg);
-    ROS_INFO("avg range on right: %.3f", right_avg);
+    //ROS_INFO("avg range on left:  %.3f", left_avg);
+    //ROS_INFO("avg range on right: %.3f", right_avg);
     ROS_INFO("Iteration #%d", iteration_count);
     
 }
