@@ -97,13 +97,13 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
                     linearx = NEW_LINEARX;
                     angularz = 0.0;
 
-                    // corridor-centering bias
-                    if (left_avg < right_avg - 0.3)      angularz += 0.2;
-                    else if (right_avg < left_avg - 0.3) angularz -= 0.2;
+                    // // corridor-centering bias
+                    // if (left_avg < right_avg - 0.3)      angularz -= 0.2;
+                    // else if (right_avg < left_avg - 0.3) angularz += 0.2;
 
-                    // clamp steering
-                    if (angularz > 0.5)  angularz = 0.5;
-                    if (angularz < -0.5) angularz = -0.5;
+                    // // clamp steering
+                    // if (angularz > 0.5)  angularz = 0.5;
+                    // if (angularz < -0.5) angularz = -0.5;
                 }
                 else
                 {
