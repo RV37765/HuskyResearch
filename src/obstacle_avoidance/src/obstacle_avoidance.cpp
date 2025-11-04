@@ -193,10 +193,10 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
  
 
     int front_idx        = idx_from_angle(0.0);               
-    int front_left_idx   = idx_from_angle(M_PI / 4);
-    int front_right_idx  = idx_from_angle(-M_PI / 4);
-    int left_idx         = idx_from_angle(M_PI / 2.0);         
-    int right_idx        = idx_from_angle(-M_PI / 2.0);       
+    int front_left_idx   = idx_from_angle(-M_PI / 4);
+    int front_right_idx  = idx_from_angle(M_PI / 4);
+    int left_idx         = idx_from_angle(-M_PI / 2.0);         
+    int right_idx        = idx_from_angle(M_PI / 2.0);       
 
 
     // Determines width of each window, based on center angle
