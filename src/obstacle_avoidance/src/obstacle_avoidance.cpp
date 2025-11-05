@@ -9,54 +9,23 @@
 
 
 //Change these constants for vehicle kinematics
-#define DEFAULT_LINEAR 0.4	     //LINEAR SPEED for no obstacle detected
+#define DEFAULT_LINEAR 0.5	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
-#define DISTANCE 1.2		       //Maximum distance to consider point an obstacle
+#define DISTANCE 0.8		       //Maximum distance to consider point an obstacle
 #define NEW_LINEARX 0.4	       //
 #define TURN_ANGULAR_SPEED 0.75	   //Turn speed
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
-#define BACK_ANGLE_PROPORTION_THRESHOLD 0.33 //0.24 = 60 deg / 270 , 0.33 = 90 deg / 270
 
 #define FRONT_WINDOW_DEG 17.5            // averaging window around front (± degrees)
 #define SIDE_WINDOW_DEG 35             // averaging window for side look
 
-#define REVERSE_THRESHOLD 0.8         // if front < this, consider stuck
-#define STUCK_CYCLES 15                // how many consecutive cycles before escape
-#define REVERSE_TIME 0.8               // sec to back up during escape
-#define TURN_TIME 0.8                  // sec to turn during escape
+
 
 // ---- Global state for stuck detection ----
-int g_last_turn   = 1;          // Remember last turn direction (+1 left, -1 right)
+int g_last_turn   = 1;          // Remember last turn direction (-1 left, +1 right)
 int g_clear_count = 0;   // counts consecutive clear cycles before moving forward
 
-enum Mode { NORMAL, ESCAPE_REVERSE, ESCAPE_TURN };
-Mode g_mode = NORMAL;
-ros::Time g_escape_end;
-
-
-// (for now leave empty, but we can tune later)
-std::vector<std::pair<int,int>> OCCLUSION_MASKS = {};
-
 ros::Publisher pub;
-
-
-
-
-//PURPOSE: Compute the minimum element contained in a vector to determine closest distance
-float min_element(std::vector<float> first)
-{
-	float min = 50.0;
-
-	for (std::vector<float>::iterator it = first.begin(); it < first.end(); it++)
-	{
-		if (*it<min && * it> MINIMUM_DISTANCE_THRESHOLD)
-		{
-			min = *it;
-		}
-	}
-	return min;
-}
-
 
 void computeDirection(float front_avg, float front_left_avg, float front_right_avg,
                       float left_avg,  float right_avg)
@@ -66,8 +35,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     std::string case_desc;
     static int clear_count = 0;
 
-    const float HARD_STOP_DIST = 0.8;
-    const float GO_CLEARANCE   = 1.5;
+    const float HARD_STOP_DIST = 0.75;
+    const float GO_CLEARANCE   = 1.3;
     
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
@@ -88,10 +57,10 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
 
         if (!front_blocked)
         {
-            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.3) && front_right_avg > (GO_CLEARANCE-0.3))
+            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.4) && front_right_avg > (GO_CLEARANCE-0.4))
             {
                 clear_count++;
-                if (clear_count >= 2)
+                if (clear_count >= 5)
                 {
                     case_desc = "Case: Clear ahead -> ---move forward---";
                     linearx = NEW_LINEARX;
@@ -114,7 +83,8 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
             }
             else
             {
-                case_desc = "Case: Partial clearance -> ---keep turning---";
+            
+                case_desc = "Case: Partial clearance -> ---correct direction---";
                 linearx = 0.0;
                 angularz = g_last_turn * TURN_ANGULAR_SPEED;
                 clear_count = 0;
@@ -139,6 +109,7 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
             linearx = 0.0;
         }
     }
+    
 
     // --- 4. Publish the command ---
     cmd.linear.x  = linearx;
@@ -163,11 +134,7 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 
 
     auto valid = [&](int idx) {
-        if (idx < 0 || idx >= size) return false;
-        // occlusion mask filter
-        for (auto &m : OCCLUSION_MASKS) {
-            if (idx >= m.first && idx <= m.second) return false;
-        }
+        if (idx < 0 || idx >= size) return false; 
         float r = ranges[idx];
         return (r > MINIMUM_DISTANCE_THRESHOLD && r < msg->range_max && !std::isnan(r) && !std::isinf(r));
     };
