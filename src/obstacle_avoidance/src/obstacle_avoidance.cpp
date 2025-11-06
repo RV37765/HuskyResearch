@@ -4,26 +4,18 @@
 #include <vector>
 #include <string>
 
-
-
-
-
 //Change these constants for vehicle kinematics
 #define DEFAULT_LINEAR 0.5	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
-#define DISTANCE 0.8		       //Maximum distance to consider point an obstacle
+#define DISTANCE 0.775		       //Maximum distance to consider point an obstacle
 #define NEW_LINEARX 0.4	       //
-#define TURN_ANGULAR_SPEED 0.75	   //Turn speed
+#define TURN_ANGULAR_SPEED 0.35	   //Turn speed
+#define STUCK_ANGULAR_SPEED 0.5
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
-
-#define FRONT_WINDOW_DEG 17.5            // averaging window around front (± degrees)
+#define DIRECT_FRONT_DEG 18.5
+#define FRONT_WINDOW_DEG 19.5            // averaging window around front (± degrees)
 #define SIDE_WINDOW_DEG 35             // averaging window for side look
 
-
-
-// ---- Global state for stuck detection ----
-int g_last_turn   = 1;          // Remember last turn direction (-1 left, +1 right)
-int g_clear_count = 0;   // counts consecutive clear cycles before moving forward
 
 ros::Publisher pub;
 
@@ -33,10 +25,9 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     geometry_msgs::Twist cmd;
     float linearx = 0.0f, angularz = 0.0f;
     std::string case_desc;
-    static int clear_count = 0;
 
-    const float HARD_STOP_DIST = 0.75;
-    const float GO_CLEARANCE   = 1.3;
+    const float HARD_STOP_DIST = 0.85;
+    const float GO_CLEARANCE   = 1.1;
     
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
@@ -44,70 +35,32 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     {
         case_desc = "Case: HARD STOP —> ---obstacle in front VERY CLOSE---";
         linearx = 0.0;
-        angularz = (left_avg > right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
-        g_last_turn = (left_avg > right_avg) ? +1 : -1;
-        clear_count = 0;
+        angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
+        
     }
     else
     {
-        // --- 2. Normal behavior: check whether anything blocks forward progress ---
-        bool front_blocked = (front_avg < DISTANCE ||
-                              front_left_avg < (DISTANCE) ||
-                              front_right_avg < (DISTANCE));
-
-        if (!front_blocked)
-        {
-            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.4) && front_right_avg > (GO_CLEARANCE-0.4))
+            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.25) && front_right_avg > (GO_CLEARANCE-0.25))
             {
-                clear_count++;
-                if (clear_count >= 5)
-                {
                     case_desc = "Case: Clear ahead -> ---move forward---";
                     linearx = NEW_LINEARX;
                     angularz = 0.0;
-
-                    // // corridor-centering bias
-                    // if (left_avg < right_avg - 0.3)      angularz -= 0.2;
-                    // else if (right_avg < left_avg - 0.3) angularz += 0.2;
-
-                    // // clamp steering
-                    // if (angularz > 0.5)  angularz = 0.5;
-                    // if (angularz < -0.5) angularz = -0.5;
+            }
+            else
+            {
+                if (front_left_avg > front_right_avg)
+                {
+                    //Lidar direction != default robot orientation
+                    case_desc = "Case: Front Right blocked -> ---turn left (more space)---";
+                    angularz = +TURN_ANGULAR_SPEED;
                 }
                 else
                 {
-                    case_desc = "Case: Recently cleared -> ---keep last turn---";
-                    linearx = 0.0;
-                    angularz = g_last_turn * TURN_ANGULAR_SPEED;
+                    case_desc = "Case: Front Left blocked -> ---turn right (more space)---";
+                    angularz = -TURN_ANGULAR_SPEED;
                 }
-            }
-            else
-            {
-            
-                case_desc = "Case: Partial clearance -> ---correct direction---";
                 linearx = 0.0;
-                angularz = g_last_turn * TURN_ANGULAR_SPEED;
-                clear_count = 0;
             }
-        }
-        else
-        {
-            // --- 3. Obstacle avoidance: pick the side with more diagonal clearance ---
-            clear_count = 0;
-            if (front_left_avg > front_right_avg)
-            {
-                case_desc = "Case: Front Right blocked -> ---turn left (more space)---";
-                angularz = +TURN_ANGULAR_SPEED;
-                g_last_turn = +1;
-            }
-            else
-            {
-                case_desc = "Case: Front Left blocked -> ---turn right (more space)---";
-                angularz = -TURN_ANGULAR_SPEED;
-                g_last_turn = -1;
-            }
-            linearx = 0.0;
-        }
     }
     
 
@@ -116,13 +69,13 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     cmd.angular.z = angularz;
     pub.publish(cmd);
 
-    ROS_INFO("%s (F=%.2f, FL=%.2f, FR=%.2f, L=%.2f, R=%.2f)",
-             case_desc.c_str(), front_avg, front_left_avg, front_right_avg, left_avg, right_avg);
+    ROS_INFO("%s (F=%.2f, FL=%.2f, FR=%.2f)",
+             case_desc.c_str(), front_avg, front_left_avg, front_right_avg);
 }
 
 
 //------Processing and splitting data-------
-//front, front-left, front-right, left, right
+//front, front-left, front-right
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 {
     const auto &ranges = msg->ranges;
@@ -160,14 +113,14 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
  
 
     int front_idx        = idx_from_angle(0.0);               
-    int front_left_idx   = idx_from_angle(-M_PI / 4);
-    int front_right_idx  = idx_from_angle(M_PI / 4);
+    int front_left_idx   = idx_from_angle((-M_PI  * 55) / 180);
+    int front_right_idx  = idx_from_angle((M_PI * 55)/ 180);
     int left_idx         = idx_from_angle(-M_PI / 2.0);         
     int right_idx        = idx_from_angle(M_PI / 2.0);       
 
 
     // Determines width of each window, based on center angle
-    float front_avg        = avg_window(front_idx,       FRONT_WINDOW_DEG);
+    float front_avg        = avg_window(front_idx,       DIRECT_FRONT_DEG);
     float front_left_avg   = avg_window(front_left_idx,  FRONT_WINDOW_DEG);
     float front_right_avg  = avg_window(front_right_idx, FRONT_WINDOW_DEG);
     float left_avg         = avg_window(left_idx,        SIDE_WINDOW_DEG);
