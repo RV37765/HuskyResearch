@@ -1,9 +1,9 @@
-Launch Commands:
-
-
 -------------------PS4 Pipeline Launch------------------
 
 - Turn on husky and wait a few minutes
+- Connect a terminal to Husky to initiate master node
+- Turn on ps4 remote and place Husky in position
+- Run the commands below
 
 
                    ---On Jetson---
@@ -14,6 +14,8 @@ roslaunch obstacle_avoidance ps4_pipeline.launch --screen
 ---> Share: kill
 
 
+ctrl-c, or red button if conenction dies or behavior is irradic
 
--------------------Simulation Launch-----------------
+
+
 
