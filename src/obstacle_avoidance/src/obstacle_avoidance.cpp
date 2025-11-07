@@ -8,9 +8,9 @@
 #define DEFAULT_LINEAR 0.5	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
 #define DISTANCE 0.775		       //Maximum distance to consider point an obstacle
-#define NEW_LINEARX 0.4	       //
-#define TURN_ANGULAR_SPEED 0.35	   //Turn speed
-#define STUCK_ANGULAR_SPEED 0.5
+#define NEW_LINEARX 0.3	       //Velocity
+#define TURN_ANGULAR_SPEED 0.3	   //Turn speed
+#define STUCK_ANGULAR_SPEED 0.45
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
 #define DIRECT_FRONT_DEG 18.5
 #define FRONT_WINDOW_DEG 19.5            // averaging window around front (± degrees)
@@ -25,49 +25,28 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     geometry_msgs::Twist cmd;
     float linearx = 0.0f, angularz = 0.0f;
     std::string case_desc;
-
-    const float HARD_STOP_DIST = 0.85;
-    const float GO_CLEARANCE   = 1.1;
+    const float HARD_STOP_DIST = 0.95;
     
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
     if (front_avg < HARD_STOP_DIST || front_left_avg < HARD_STOP_DIST || front_right_avg < HARD_STOP_DIST)
     {
-        case_desc = "Case: HARD STOP —> ---obstacle in front VERY CLOSE---";
-        linearx = 0.0;
-        angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
-        // if(front_avg > HARD_STOP_DIST && abs(front_left_avg-front_right_avg) < .2){
-        //     linearx = NEW_LINEARX;
-        //     angularz = 0.0;
-        // } else {
-        //     linearx = 0.0;
-        //     angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
-        // }
+        if(front_avg > HARD_STOP_DIST && abs(front_left_avg-front_right_avg) < .1){
+            case_desc = "Case: Hard Stop -->  -- FRONT OPEN SIDES EQUAL ---";
+            linearx = NEW_LINEARX;
+            angularz = 0.0;
+        } else {
+            case_desc = "Case: Hard Stop —> --- FRONT BLOCKED AND SIDES UNEQUAL---";
+            linearx = 0.0;
+            angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
+        }
         
     }
     else
     {
-            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.25) && front_right_avg > (GO_CLEARANCE-0.25))
-            {
-                    case_desc = "Case: Clear ahead -> ---move forward---";
-                    linearx = NEW_LINEARX;
-                    angularz = 0.0;
-            }
-            else
-            {
-                if (front_left_avg > front_right_avg)
-                {
-                    //Lidar direction != default robot orientation
-                    case_desc = "Case: Front Right blocked -> ---turn left (more space)---";
-                    angularz = +TURN_ANGULAR_SPEED;
-                }
-                else
-                {
-                    case_desc = "Case: Front Left blocked -> ---turn right (more space)---";
-                    angularz = -TURN_ANGULAR_SPEED;
-                }
-                linearx = 0.0;
-            }
+        case_desc = "Case: Clear ahead -> ---MOVE FORWARD---";
+        linearx = NEW_LINEARX;
+        angularz = 0.0;
     }
     
 
