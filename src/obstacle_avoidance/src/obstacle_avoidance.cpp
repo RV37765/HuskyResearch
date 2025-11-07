@@ -36,6 +36,13 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
         case_desc = "Case: HARD STOP —> ---obstacle in front VERY CLOSE---";
         linearx = 0.0;
         angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
+        // if(front_avg > HARD_STOP_DIST && abs(front_left_avg-front_right_avg) < .2){
+        //     linearx = NEW_LINEARX;
+        //     angularz = 0.0;
+        // } else {
+        //     linearx = 0.0;
+        //     angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
+        // }
         
     }
     else
