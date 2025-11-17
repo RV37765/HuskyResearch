@@ -10,7 +10,6 @@
 #define DISTANCE 0.775		       //Maximum distance to consider point an obstacle
 #define NEW_LINEARX 0.3	       //Velocity
 #define TURN_ANGULAR_SPEED 0.3	   //Turn speed
-#define STUCK_ANGULAR_SPEED 0.45
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
 #define DIRECT_FRONT_DEG 20.5
 #define FRONT_WINDOW_DEG 23.5            // averaging window around front (± degrees)
