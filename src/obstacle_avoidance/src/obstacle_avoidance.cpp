@@ -1,6 +1,6 @@
-#include <ros/ros.h>
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Twist.h>
+#include <ros/ros.h> //Accessed from husky upon launch
+#include <sensor_msgs/LaserScan.h> //Accessed from husky upon launch
+#include <geometry_msgs/Twist.h> //Accessed from husky upon launch
 #include <vector>
 #include <string>
 
@@ -8,15 +8,16 @@
 #define DEFAULT_LINEAR 0.5	     //LINEAR SPEED for no obstacle detected
 #define DEFAULT_ANGULAR 0	      //ANGULAR SPEED (Turn)
 #define DISTANCE 0.775		       //Maximum distance to consider point an obstacle
-#define NEW_LINEARX 0.4	       //
-#define TURN_ANGULAR_SPEED 0.35	   //Turn speed
-#define STUCK_ANGULAR_SPEED 0.5
+#define NEW_LINEARX 0.3	       //Velocity
+#define TURN_ANGULAR_SPEED 0.3	   //Turn speed
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
-#define DIRECT_FRONT_DEG 18.5
-#define FRONT_WINDOW_DEG 19.5            // averaging window around front (± degrees)
-#define SIDE_WINDOW_DEG 35             // averaging window for side look
+#define DIRECT_FRONT_DEG 20.5
+#define FRONT_WINDOW_DEG 23.5            // averaging window around front (± degrees)
+#define SIDE_WINDOW_DEG 35             // averaging window for side look --- not used in current implementation
 
 
+
+// Main features to modify algorithm: distance, angle length for each sector
 ros::Publisher pub;
 
 void computeDirection(float front_avg, float front_left_avg, float front_right_avg,
@@ -25,49 +26,28 @@ void computeDirection(float front_avg, float front_left_avg, float front_right_a
     geometry_msgs::Twist cmd;
     float linearx = 0.0f, angularz = 0.0f;
     std::string case_desc;
-
-    const float HARD_STOP_DIST = 0.85;
-    const float GO_CLEARANCE   = 1.1;
+    const float HARD_STOP_DIST = 0.95;
     
 
     // --- 1. Emergency hard stop if anything close in the forward arc ---
     if (front_avg < HARD_STOP_DIST || front_left_avg < HARD_STOP_DIST || front_right_avg < HARD_STOP_DIST)
     {
-        case_desc = "Case: HARD STOP —> ---obstacle in front VERY CLOSE---";
-        linearx = 0.0;
-        angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
-        // if(front_avg > HARD_STOP_DIST && abs(front_left_avg-front_right_avg) < .2){
-        //     linearx = NEW_LINEARX;
-        //     angularz = 0.0;
-        // } else {
-        //     linearx = 0.0;
-        //     angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
-        // }
+        if(front_avg > HARD_STOP_DIST && abs(front_left_avg-front_right_avg) < .1){
+            case_desc = "Case: Hard Stop -->  -- FRONT OPEN SIDES EQUAL ---";
+            linearx = NEW_LINEARX;
+            angularz = 0.0;
+        } else {
+            case_desc = "Case: Hard Stop —> --- FRONT BLOCKED AND SIDES UNEQUAL---";
+            linearx = 0.0;
+            angularz = (front_left_avg > front_right_avg) ? +TURN_ANGULAR_SPEED : -TURN_ANGULAR_SPEED;
+        }
         
     }
     else
     {
-            if (front_avg > GO_CLEARANCE && front_left_avg > (GO_CLEARANCE-0.25) && front_right_avg > (GO_CLEARANCE-0.25))
-            {
-                    case_desc = "Case: Clear ahead -> ---move forward---";
-                    linearx = NEW_LINEARX;
-                    angularz = 0.0;
-            }
-            else
-            {
-                if (front_left_avg > front_right_avg)
-                {
-                    //Lidar direction != default robot orientation
-                    case_desc = "Case: Front Right blocked -> ---turn left (more space)---";
-                    angularz = +TURN_ANGULAR_SPEED;
-                }
-                else
-                {
-                    case_desc = "Case: Front Left blocked -> ---turn right (more space)---";
-                    angularz = -TURN_ANGULAR_SPEED;
-                }
-                linearx = 0.0;
-            }
+        case_desc = "Case: Clear ahead -> ---MOVE FORWARD---";
+        linearx = NEW_LINEARX;
+        angularz = 0.0;
     }
     
 
@@ -134,15 +114,15 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     float right_avg        = avg_window(right_idx,       SIDE_WINDOW_DEG);
     
 
-    // Decide and publish
+    // Decide and publish -- Function call -- 
     computeDirection(front_avg, front_left_avg, front_right_avg, left_avg, right_avg);
 
     ROS_INFO("SIZE: %d", size);
     ROS_INFO("avg range on front: %.3f", front_avg);
     ROS_INFO("avg range on front-right: %.3f", front_right_avg);
     ROS_INFO("avg range on front-left: %.3f", front_left_avg);
-    //ROS_INFO("avg range on left:  %.3f", left_avg);
-    //ROS_INFO("avg range on right: %.3f", right_avg);
+    //ROS_INFO("avg range on left:  %.3f", left_avg); NOT NEEDED IN CURRENT IMPLEMENTATION
+    //ROS_INFO("avg range on right: %.3f", right_avg); NOT NEEDED IN CURRENT IMPLEMENTATION
     ROS_INFO("Iteration #%d", iteration_count);
     
 }

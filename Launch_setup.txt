@@ -13,9 +13,8 @@ roslaunch obstacle_avoidance ps4_pipeline.launch --screen
 ---> Options: run
 ---> Share: kill
 
-
-ctrl-c, or red button if conenction dies or behavior is irradic
-
+------------------Emergency Kill----------------
+if process dies or hangs, press red button on husky, then ctrl-c on the Jetson and drive husky back to start position
 
 
 
