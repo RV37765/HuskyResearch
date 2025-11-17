@@ -1,0 +1,6 @@
+[INFO] [1763414682.101981157]: Case: Clear ahead -> ---MOVE FORWARD--- (F=9.40, FL=1.04, FR=1.93)
+[INFO] [1763414682.102077926]: SIZE: 897
+[INFO] [1763414682.102132999]: avg range on front: 9.398
+[INFO] [1763414682.102174535]: avg range on front-right: 1.925
+[INFO] [1763414682.102211528]: avg range on front-left: 1.039
+[INFO] [1763414682.102247016]: Iteration #95

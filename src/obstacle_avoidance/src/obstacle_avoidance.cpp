@@ -1,6 +1,6 @@
-#include <ros/ros.h>
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Twist.h>
+#include <ros/ros.h> //Accessed from husky upon launch
+#include <sensor_msgs/LaserScan.h> //Accessed from husky upon launch
+#include <geometry_msgs/Twist.h> //Accessed from husky upon launch
 #include <vector>
 #include <string>
 
@@ -12,11 +12,13 @@
 #define TURN_ANGULAR_SPEED 0.3	   //Turn speed
 #define STUCK_ANGULAR_SPEED 0.45
 #define MINIMUM_DISTANCE_THRESHOLD 0.1 //how sensitive LiDAR is to small distance values (DEFAULT: 0.1)
-#define DIRECT_FRONT_DEG 18.5
-#define FRONT_WINDOW_DEG 19.5            // averaging window around front (± degrees)
-#define SIDE_WINDOW_DEG 35             // averaging window for side look
+#define DIRECT_FRONT_DEG 20.5
+#define FRONT_WINDOW_DEG 23.5            // averaging window around front (± degrees)
+#define SIDE_WINDOW_DEG 35             // averaging window for side look --- not used in current implementation
 
 
+
+// Main features to modify algorithm: distance, angle length for each sector
 ros::Publisher pub;
 
 void computeDirection(float front_avg, float front_left_avg, float front_right_avg,
@@ -113,15 +115,15 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
     float right_avg        = avg_window(right_idx,       SIDE_WINDOW_DEG);
     
 
-    // Decide and publish
+    // Decide and publish -- Function call -- 
     computeDirection(front_avg, front_left_avg, front_right_avg, left_avg, right_avg);
 
     ROS_INFO("SIZE: %d", size);
     ROS_INFO("avg range on front: %.3f", front_avg);
     ROS_INFO("avg range on front-right: %.3f", front_right_avg);
     ROS_INFO("avg range on front-left: %.3f", front_left_avg);
-    //ROS_INFO("avg range on left:  %.3f", left_avg);
-    //ROS_INFO("avg range on right: %.3f", right_avg);
+    //ROS_INFO("avg range on left:  %.3f", left_avg); NOT NEEDED IN CURRENT IMPLEMENTATION
+    //ROS_INFO("avg range on right: %.3f", right_avg); NOT NEEDED IN CURRENT IMPLEMENTATION
     ROS_INFO("Iteration #%d", iteration_count);
     
 }
