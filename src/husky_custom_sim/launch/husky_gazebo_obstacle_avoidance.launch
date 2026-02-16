@@ -24,6 +24,8 @@
 
   <!-- Your avoidance node (built in the obstacle_avoidance package) -->
   
-  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen"/>
+  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node" name="obstacle_avoidance" output="screen">
+    <rosparam file="$(find obstacle_avoidance)/config/obstacle_avoidance_params.yaml" command="load"/>
+  </node>
   
 </launch>
