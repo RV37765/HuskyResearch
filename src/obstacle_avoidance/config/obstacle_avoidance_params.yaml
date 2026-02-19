@@ -1,0 +1,17 @@
+# Obstacle Avoidance Parameters
+# Edit these values to tune robot behavior — no recompilation needed.
+# After changing, just relaunch the simulation.
+
+# --- Speeds ---
+linear_speed: 0.3          # Forward driving speed (m/s). Higher = faster but less reaction time.
+turn_speed: 0.3            # Turning speed (rad/s) when avoiding obstacles. Higher = sharper turns.
+
+# --- Distances ---
+hard_stop_distance: 0.95   # If any front sensor reads closer than this (meters), trigger emergency behavior.
+min_distance_threshold: 0.1 # Ignore LiDAR readings below this (meters). Filters out noise/ground reflections.
+
+# --- Sensor Windows (degrees) ---
+# These control how wide each "cone of vision" is for averaging LiDAR readings.
+direct_front_deg: 20.5     # Width of the straight-ahead window (± degrees from center).
+front_window_deg: 23.5     # Width of the front-left and front-right windows.
+side_window_deg: 35.0      # Width of the side windows (computed but not yet used in decisions).
