@@ -1,0 +1,62 @@
+# SLAM Toolbox Configuration for Husky + Velodyne VLP-16
+# These parameters configure how the robot builds a 2D map from laser scans.
+
+# --- Plugin selection ---
+solver_plugin: solver_plugins::CeresSolver
+ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+ceres_preconditioner: SCHUR_JACOBI
+ceres_trust_strategy: LEVENBERG_MARQUARDT
+ceres_dogleg_type: TRADITIONAL_DOGLEG
+ceres_loss_function: None
+
+# --- Coordinate frames ---
+# odom_frame: Where the robot thinks it started (from wheel odometry)
+# map_frame: The global map frame that SLAM creates and corrects over time
+# base_frame: The robot's body
+odom_frame: odom
+map_frame: map
+base_frame: base_link
+
+# --- Scan topic ---
+# Must match what pointcloud_to_laserscan publishes
+scan_topic: /scan
+scan_queue_size: 1              # Only process the latest scan, don't buffer old ones
+use_scan_matching: true
+use_scan_barycenter: true
+
+# --- Timing ---
+# How often to process a scan for mapping (seconds)
+# Lower = more frequent updates but more CPU. 0.05 = 20Hz max.
+minimum_time_interval: 0.5
+transform_timeout: 0.5
+tf_buffer_duration: 30.0
+
+# --- Map resolution ---
+# Size of each grid cell in meters. 0.05 = 5cm resolution.
+# Smaller = more detailed but more memory. 0.05 is good for indoor environments.
+resolution: 0.05
+
+# --- Scan matching parameters ---
+# These control how slam_toolbox aligns new scans to the existing map.
+max_laser_range: 20.0           # Ignore readings beyond this (meters). Our Velodyne goes to 30m but 20m is plenty for indoor.
+minimum_travel_distance: 0.1    # Don't add a new scan unless the robot moved at least this far (meters). Lower = more map updates.
+minimum_travel_heading: 0.1     # Or rotated at least this much (radians, ~6 degrees). Lower = more sensitive to rotation.
+
+# --- Loop closure ---
+# When the robot returns to a place it's been before, SLAM can recognize it
+# and correct accumulated drift. This is what makes SLAM better than just odometry.
+do_loop_closing: true
+loop_match_minimum_chain_size: 3
+loop_match_maximum_variance_coarse: 3.0
+loop_match_minimum_response_coarse: 0.35
+loop_match_minimum_response_fine: 0.45
+
+# --- Map update ---
+map_update_interval: 2.0        # How often to publish the map (seconds). Lower = more frequent RViz updates.
+
+# --- Mode ---
+# online_async = build map in real time, non-blocking (best for simulation)
+mode: mapping
+
+# --- Stack size ---
+stack_size_to_use: 40000000

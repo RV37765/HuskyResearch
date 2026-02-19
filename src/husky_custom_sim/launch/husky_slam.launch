@@ -1,0 +1,58 @@
+<launch>
+  <!--
+    SLAM Mapping Launch File
+    Starts Gazebo + Husky + SLAM + RViz + keyboard teleop.
+    Drive the robot with your keyboard while watching the map build in RViz.
+    No obstacle avoidance — you are in control.
+  -->
+
+  <!-- Use Gazebo's simulated clock for all nodes (critical for SLAM timing) -->
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Start Gazebo with the hallway world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/hallway_test.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn the Husky robot -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- Publish a static TF from base_link to velodyne.
+       The Velodyne Gazebo plugin tags its point clouds as frame "velodyne",
+       but the Husky URDF doesn't include a matching TF link.
+       Without this, nothing can transform Velodyne data into the robot's frame.
+       The Velodyne sits ~0.4m above base_link on the Husky's top plate. -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
+        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+
+  <!-- Convert Velodyne 3D point cloud to 2D laser scan -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="-0.3"/>
+    <param name="max_height" value="1.0"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <!-- Start SLAM Toolbox -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml" command="load"/>
+  </node>
+
+  <!-- Start RViz with pre-configured map view -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"
+        args="-d $(find husky_custom_sim)/config/slam_view.rviz"/>
+
+  <!-- Keyboard teleop — drive with i/j/k/l keys
+       IMPORTANT: remap to /joy_teleop/cmd_vel because the Husky's twist_mux
+       only accepts commands on specific topics. /cmd_vel is ignored. -->
+  <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
+        output="screen" launch-prefix="xterm -e">
+    <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
+  </node>
+</launch>
