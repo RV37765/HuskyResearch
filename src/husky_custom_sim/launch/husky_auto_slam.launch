@@ -1,0 +1,72 @@
+<launch>
+  <!--
+    Autonomous SLAM Launch File
+    The robot drives itself (obstacle avoidance) while simultaneously
+    building a map (SLAM). No human driving needed.
+
+    Components combined from:
+      - husky_gazebo_obstacle_avoidance.launch (the driver)
+      - husky_slam.launch (the mapper)
+  -->
+
+  <!-- All nodes must use Gazebo's simulated clock.
+       Without this, SLAM timestamps won't match odometry timestamps
+       and scans get dropped. -->
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Start Gazebo with the hallway world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/hallway_test.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn the Husky robot -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- Register the Velodyne's physical position in TF.
+       The Gazebo plugin labels its data as frame "velodyne", but nothing
+       in the Husky's robot description defines where that frame is.
+       This tells TF: "velodyne is 0.4m directly above base_link." -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
+        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+
+  <!-- Convert Velodyne 3D point cloud to 2D laser scan.
+       Uses the wider height range (-0.3 to 1.0m) for better wall detection
+       in simulation. target_frame is required so the output scan is in
+       base_link coordinates, which SLAM needs. -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
+        name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="-0.3"/>
+    <param name="max_height" value="1.0"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <!-- Obstacle avoidance node — the driver.
+       Reads /scan, decides how to move, publishes motor commands.
+       This replaces the keyboard teleop from husky_slam.launch. -->
+  <node pkg="obstacle_avoidance" type="obstacle_avoidance_node"
+        name="obstacle_avoidance" output="screen">
+    <rosparam file="$(find obstacle_avoidance)/config/obstacle_avoidance_params.yaml"
+              command="load"/>
+  </node>
+
+  <!-- SLAM Toolbox — the mapper.
+       Also reads /scan, builds the occupancy grid map.
+       Publishes on /map for RViz to display. -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node"
+        name="slam_toolbox" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml"
+              command="load"/>
+  </node>
+
+  <!-- RViz — visualization.
+       Shows the map building in real time. -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"
+        args="-d $(find husky_custom_sim)/config/slam_view.rviz"/>
+</launch>
