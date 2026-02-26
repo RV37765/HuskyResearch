@@ -110,10 +110,9 @@
               command="load"/>
 
     <!-- Remap the output velocity command.
-         move_base publishes to /cmd_vel by default, but the Husky's
-         twist_mux only accepts commands on specific topics.
-         /move_base/cmd_vel is one of the accepted inputs. -->
-    <remap from="cmd_vel" to="/cmd_vel"/>
+         Publish directly to the Husky's velocity controller, bypassing twist_mux.
+         This is the same approach the obstacle_avoidance node uses. -->
+    <remap from="cmd_vel" to="/husky_velocity_controller/cmd_vel"/>
   </node>
 
   <!-- RViz with navigation view.

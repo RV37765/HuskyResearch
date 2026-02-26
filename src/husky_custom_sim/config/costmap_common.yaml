@@ -25,11 +25,14 @@ scan:
 # --- Inflation ---
 # inflation_radius: how far from an obstacle to start adding "cost" (meters).
 # Bigger = robot stays further from walls. Too big = robot can't fit through doorways.
-# The Husky is ~0.5m from center to edge, so 0.55m gives a small safety buffer.
-inflation_radius: 0.55
+# Reduced to 0.35m because the hallway corridors are narrow (~2m wide).
+# At 0.55m the inflation zones from opposite walls overlapped, leaving almost
+# no navigable space. 0.35m still provides buffer but lets the planner find paths.
+inflation_radius: 0.35
 
 # cost_scaling_factor: how steeply the cost drops off with distance from obstacles.
 # Higher = cost drops off faster (robot is more willing to get close to walls).
 # Lower = cost drops off slowly (robot gives walls a wide berth).
-# 2.5 is a moderate value — not too aggressive, not too cautious.
-cost_scaling_factor: 2.5
+# Increased to 5.0 so cost drops off quickly — the robot treats space more than
+# ~0.35m from walls as fully safe, which helps in tight corridors.
+cost_scaling_factor: 5.0
