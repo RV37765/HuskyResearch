@@ -1,10 +1,16 @@
 # Move Base and Local Planner Parameters
 # Configures the overall move_base behavior and the DWA local planner.
 
+# --- Planner selection ---
+# Must explicitly specify DWAPlannerROS, otherwise move_base defaults to
+# the old TrajectoryPlannerROS which ignores all our DWA parameters.
+base_local_planner: dwa_local_planner/DWAPlannerROS
+
 # --- Controller frequency ---
 # How often move_base runs the local planner loop (Hz).
-# Higher = smoother driving but more CPU. 5 Hz is conservative for simulation.
-controller_frequency: 5.0
+# Lowered to 3 Hz for slow simulation (RTF ~0.13). At 5 Hz the controller
+# outruns the TF updates and gets extrapolation errors.
+controller_frequency: 3.0
 
 # --- Patience timers ---
 # How long move_base waits before giving up on a planner.

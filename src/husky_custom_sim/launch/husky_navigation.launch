@@ -80,6 +80,12 @@
     <param name="update_min_d" value="0.1"/>
     <param name="update_min_a" value="0.1"/>
 
+    <!-- Transform tolerance — how much lag (seconds) is allowed between
+         AMCL's map→odom transform and the current time.
+         Increased to 1.0 because our simulation runs at low RTF (~0.13),
+         so transforms are often slightly behind real-time requests. -->
+    <param name="transform_tolerance" value="1.0"/>
+
     <!-- Initial pose — start at the origin (where the robot spawns in Gazebo) -->
     <param name="initial_pose_x" value="0.0"/>
     <param name="initial_pose_y" value="0.0"/>
