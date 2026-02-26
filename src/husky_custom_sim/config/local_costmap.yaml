@@ -1,0 +1,34 @@
+# Local Costmap Parameters
+# The local costmap is a small rolling window around the robot.
+# It updates rapidly from live sensor data to catch obstacles
+# that aren't on the saved map (new objects, moved furniture, etc.).
+# The local planner uses this for real-time obstacle avoidance.
+
+local_costmap:
+  # --- Frame configuration ---
+  global_frame: odom              # The local costmap uses the odom frame (not map)
+  robot_base_frame: base_link     # The robot's body frame
+
+  # --- Update rate ---
+  # The local costmap needs to update fast — it's the robot's "reflexes."
+  # 5 Hz means the robot re-evaluates nearby obstacles 5 times per second.
+  update_frequency: 5.0
+  publish_frequency: 2.0          # How often to publish for RViz visualization
+
+  # --- No static map ---
+  # The local costmap builds itself entirely from live sensor data.
+  # It doesn't use the saved SLAM map — that's the global costmap's job.
+  static_map: false
+
+  # --- Rolling window ---
+  # true = the costmap is a fixed-size window that moves with the robot
+  rolling_window: true
+  width: 6.0                      # Window is 6m wide (3m each side of robot)
+  height: 6.0                     # Window is 6m tall (3m front and back)
+  resolution: 0.05                # Same resolution as our SLAM map (5cm per cell)
+
+  # --- Plugins (layers) ---
+  # No static_layer here — just live obstacles and inflation.
+  plugins:
+    - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}

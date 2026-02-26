@@ -1,0 +1,118 @@
+<launch>
+  <!--
+    Navigation Launch File
+    Loads a previously saved SLAM map and uses move_base to navigate
+    to goals set in RViz. Click "2D Nav Goal" in RViz to send the
+    robot to a destination.
+
+    Prerequisites:
+      - A saved map (slam_map.yaml + slam_map.pgm) in the maps/ folder
+      - Phase 2 SLAM must have been completed first to generate the map
+  -->
+
+  <!-- Use Gazebo's simulated clock for all nodes -->
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Start Gazebo with the hallway world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/hallway_test.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn the Husky robot -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- Register the Velodyne's physical position in TF.
+       Same transform we use in SLAM — velodyne is 0.4m above base_link. -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
+        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+
+  <!-- Convert Velodyne 3D point cloud to 2D laser scan.
+       Same settings as our SLAM launch — the local costmap needs /scan. -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
+        name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="-0.3"/>
+    <param name="max_height" value="1.0"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <!-- Load the saved SLAM map.
+       map_server reads the .yaml file (which points to the .pgm image)
+       and publishes it on the /map topic for the global costmap. -->
+  <node pkg="map_server" type="map_server" name="map_server"
+        args="$(find husky_custom_sim)/maps/slam_map.yaml"/>
+
+  <!-- AMCL — Adaptive Monte Carlo Localization.
+       The robot needs to know WHERE it is on the saved map.
+       AMCL uses particle filters to match live laser scans against
+       the saved map and determine the robot's position.
+       Without this, move_base wouldn't know where the robot is. -->
+  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <param name="odom_frame_id" value="odom"/>
+    <param name="base_frame_id" value="base_link"/>
+    <param name="global_frame_id" value="map"/>
+    <param name="scan_topic" value="/scan"/>
+
+    <!-- Particle filter settings -->
+    <param name="min_particles" value="100"/>
+    <param name="max_particles" value="500"/>
+
+    <!-- How much to trust odometry vs. laser for position updates -->
+    <param name="odom_model_type" value="diff"/>
+    <param name="odom_alpha1" value="0.2"/>
+    <param name="odom_alpha2" value="0.2"/>
+    <param name="odom_alpha3" value="0.2"/>
+    <param name="odom_alpha4" value="0.2"/>
+
+    <!-- Laser model parameters -->
+    <param name="laser_max_range" value="20.0"/>
+    <param name="laser_max_beams" value="60"/>
+    <param name="laser_z_hit" value="0.95"/>
+    <param name="laser_z_rand" value="0.05"/>
+
+    <!-- Update thresholds — how much the robot must move before AMCL updates -->
+    <param name="update_min_d" value="0.1"/>
+    <param name="update_min_a" value="0.1"/>
+
+    <!-- Initial pose — start at the origin (where the robot spawns in Gazebo) -->
+    <param name="initial_pose_x" value="0.0"/>
+    <param name="initial_pose_y" value="0.0"/>
+    <param name="initial_pose_a" value="0.0"/>
+  </node>
+
+  <!-- move_base — the navigation brain.
+       Combines global planner + local planner + costmaps.
+       Listens for goals on /move_base_simple/goal (from RViz "2D Nav Goal").
+       Publishes motor commands to drive the robot to the goal. -->
+  <node pkg="move_base" type="move_base" name="move_base" output="screen">
+    <!-- Load all configuration files -->
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="global_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="local_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/global_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/local_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/move_base_params.yaml"
+              command="load"/>
+
+    <!-- Remap the output velocity command.
+         move_base publishes to /cmd_vel by default, but the Husky's
+         twist_mux only accepts commands on specific topics.
+         /move_base/cmd_vel is one of the accepted inputs. -->
+    <remap from="cmd_vel" to="/cmd_vel"/>
+  </node>
+
+  <!-- RViz with navigation view.
+       Includes "2D Nav Goal" and "2D Pose Estimate" tools.
+       Click "2D Nav Goal" to set a destination for the robot. -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"
+        args="-d $(find husky_custom_sim)/config/nav_view.rviz"/>
+</launch>

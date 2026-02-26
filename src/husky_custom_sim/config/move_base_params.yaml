@@ -1,0 +1,81 @@
+# Move Base and Local Planner Parameters
+# Configures the overall move_base behavior and the DWA local planner.
+
+# --- Controller frequency ---
+# How often move_base runs the local planner loop (Hz).
+# Higher = smoother driving but more CPU. 5 Hz is conservative for simulation.
+controller_frequency: 5.0
+
+# --- Patience timers ---
+# How long move_base waits before giving up on a planner.
+# If the global planner can't find a path in 5 seconds, trigger recovery.
+# If the local planner is stuck for 5 seconds, trigger recovery.
+planner_patience: 5.0
+controller_patience: 5.0
+
+# --- Recovery behaviors ---
+# When the robot gets stuck, move_base tries these in order:
+# 1. Clear costmaps (remove stale obstacle data)
+# 2. Rotate in place (try to find a way out)
+# If all recovery behaviors fail, move_base aborts the goal.
+recovery_behavior_enabled: true
+clearing_rotation_allowed: true
+
+# --- Oscillation prevention ---
+# If the robot keeps going back and forth over the same spot,
+# stop and trigger recovery instead of oscillating forever.
+oscillation_timeout: 10.0
+oscillation_distance: 0.2
+
+# ============================================================
+# DWA Local Planner (Dynamic Window Approach)
+# ============================================================
+# This is the "steering wheel" — it evaluates many possible velocity
+# commands and picks the one that best follows the global plan
+# while avoiding obstacles.
+
+DWAPlannerROS:
+  # --- Speed limits ---
+  # The Husky can go faster, but in simulation with slow RTF,
+  # keeping speeds moderate prevents overshooting.
+  max_vel_x: 0.4                  # Max forward speed (m/s)
+  min_vel_x: 0.0                  # Min forward speed (can stop but not reverse)
+  max_vel_y: 0.0                  # No sideways motion (Husky is differential drive, not omnidirectional)
+  min_vel_y: 0.0
+
+  max_vel_trans: 0.4              # Max translational velocity overall
+  min_vel_trans: 0.1              # Min translational velocity (below this, just stop)
+  max_vel_theta: 0.8              # Max turning speed (rad/s)
+  min_vel_theta: 0.1              # Min turning speed
+
+  # --- Acceleration limits ---
+  # How fast the robot can speed up or slow down.
+  # Conservative values prevent jerky motion.
+  acc_lim_x: 1.0                  # Forward acceleration (m/s^2)
+  acc_lim_y: 0.0                  # No sideways acceleration
+  acc_lim_theta: 1.5              # Turning acceleration (rad/s^2)
+
+  # --- Goal tolerances ---
+  # How close is "close enough" to the goal?
+  xy_goal_tolerance: 0.20         # Within 20cm of the goal position
+  yaw_goal_tolerance: 0.15        # Within ~9 degrees of the goal orientation
+  latch_xy_goal_tolerance: false  # Don't lock in position tolerance early
+
+  # --- Forward simulation ---
+  # The planner simulates possible trajectories this far into the future.
+  # Longer = smoother paths but more computation.
+  sim_time: 2.0                   # Simulate 2 seconds ahead
+  sim_granularity: 0.05           # Step size for simulation
+  vx_samples: 10                  # Number of forward velocity options to try
+  vy_samples: 1                   # Only 1 (no sideways motion)
+  vtheta_samples: 20              # Number of turning options to try
+
+  # --- Path following weights ---
+  # These control what the planner prioritizes:
+  path_distance_bias: 32.0        # How much to prefer staying on the planned path
+  goal_distance_bias: 24.0        # How much to prefer getting closer to the goal
+  occdist_scale: 0.05             # How much to avoid obstacles (higher = more cautious)
+
+  # --- Other ---
+  publish_traj_pc: true           # Publish trajectory candidates for RViz debugging
+  publish_cost_grid_pc: true      # Publish cost grid for RViz debugging

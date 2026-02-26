@@ -1,0 +1,34 @@
+# Global Costmap Parameters
+# The global costmap covers the ENTIRE saved map.
+# It loads the static map from map_server and adds inflation around obstacles.
+# The global planner uses this to calculate routes across the full environment.
+
+global_costmap:
+  # --- Frame configuration ---
+  global_frame: map               # The costmap lives in the "map" frame (the global coordinate system)
+  robot_base_frame: base_link     # The robot's body frame
+
+  # --- Update rate ---
+  # The global costmap doesn't need to update as fast as the local one
+  # because the saved map rarely changes. 1 Hz is plenty.
+  update_frequency: 1.0
+  publish_frequency: 0.5          # How often to publish for RViz visualization
+
+  # --- Static map ---
+  # static_map: true means "load the map from map_server as my base layer"
+  # This is your saved SLAM map — the walls, corridors, etc.
+  static_map: true
+
+  # --- Rolling window ---
+  # false = the costmap covers the entire map (not just a window around the robot)
+  rolling_window: false
+
+  # --- Plugins (layers) ---
+  # The global costmap is built in layers, stacked on top of each other:
+  # 1. static_layer: the saved map (walls from SLAM)
+  # 2. obstacle_layer: live sensor data overlaid on the static map
+  # 3. inflation_layer: the "caution tape" around all obstacles
+  plugins:
+    - {name: static_layer,    type: "costmap_2d::StaticLayer"}
+    - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}

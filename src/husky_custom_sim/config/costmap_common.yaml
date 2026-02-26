@@ -1,0 +1,35 @@
+# Costmap Common Parameters
+# Shared by both the global and local costmaps.
+# Defines the robot's physical size and what sensor data to use.
+
+# --- Robot footprint ---
+# The Husky is roughly 0.98m long x 0.67m wide.
+# footprint is a polygon (list of [x,y] corners) describing the robot's shape.
+# The planner uses this to know "how much space does the robot need to fit through?"
+footprint: [[-0.49, -0.34], [-0.49, 0.34], [0.49, 0.34], [0.49, -0.34]]
+
+# --- Sensor sources ---
+# This tells the costmap: "listen to the /scan topic to learn about obstacles."
+# observation_sources lists named sources; each one is configured below.
+observation_sources: scan
+
+# "scan" source configuration:
+scan:
+  topic: /scan                    # The laser scan topic (from pointcloud_to_laserscan)
+  data_type: LaserScan            # Type of message (not PointCloud2)
+  marking: true                   # YES, use this data to mark cells as "obstacle"
+  clearing: true                  # YES, use this data to clear cells as "free space"
+  sensor_frame: base_link         # The TF frame the scan is in (our pointcloud_to_laserscan outputs in base_link)
+  observation_persistence: 0.0    # Don't keep old observations — only use the latest scan
+
+# --- Inflation ---
+# inflation_radius: how far from an obstacle to start adding "cost" (meters).
+# Bigger = robot stays further from walls. Too big = robot can't fit through doorways.
+# The Husky is ~0.5m from center to edge, so 0.55m gives a small safety buffer.
+inflation_radius: 0.55
+
+# cost_scaling_factor: how steeply the cost drops off with distance from obstacles.
+# Higher = cost drops off faster (robot is more willing to get close to walls).
+# Lower = cost drops off slowly (robot gives walls a wide berth).
+# 2.5 is a moderate value — not too aggressive, not too cautious.
+cost_scaling_factor: 2.5
