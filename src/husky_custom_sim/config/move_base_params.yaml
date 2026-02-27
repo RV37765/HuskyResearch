@@ -8,16 +8,18 @@ base_local_planner: dwa_local_planner/DWAPlannerROS
 
 # --- Controller frequency ---
 # How often move_base runs the local planner loop (Hz).
-# Lowered to 3 Hz for slow simulation (RTF ~0.13). At 5 Hz the controller
-# outruns the TF updates and gets extrapolation errors.
-controller_frequency: 3.0
+# Lowered to 2 Hz for slow simulation (RTF ~0.19). At higher frequencies
+# the controller outruns TF updates and gets extrapolation errors.
+# 2 Hz is gentle enough for slow sim while still being responsive.
+controller_frequency: 2.0
 
 # --- Patience timers ---
-# How long move_base waits before giving up on a planner.
-# If the global planner can't find a path in 5 seconds, trigger recovery.
-# If the local planner is stuck for 5 seconds, trigger recovery.
-planner_patience: 5.0
-controller_patience: 5.0
+# How long (wall-clock seconds) move_base waits before giving up on a planner.
+# At RTF ~0.19, 5 wall-clock seconds = only ~1 sim second — the robot barely
+# starts moving before recovery triggers. 20s gives ~4 sim seconds, which is
+# enough time for the planner to actually work through tight corridors.
+planner_patience: 20.0
+controller_patience: 20.0
 
 # --- Recovery behaviors ---
 # When the robot gets stuck, move_base tries these in order:
@@ -30,7 +32,10 @@ clearing_rotation_allowed: true
 # --- Oscillation prevention ---
 # If the robot keeps going back and forth over the same spot,
 # stop and trigger recovery instead of oscillating forever.
-oscillation_timeout: 10.0
+# Increased from 10s to 30s because at RTF ~0.19, 10 wall-clock seconds
+# is only ~2 sim seconds — not enough to distinguish real oscillation
+# from slow-but-steady progress.
+oscillation_timeout: 30.0
 oscillation_distance: 0.2
 
 # ============================================================
@@ -44,13 +49,13 @@ DWAPlannerROS:
   # --- Speed limits ---
   # The Husky can go faster, but in simulation with slow RTF,
   # keeping speeds moderate prevents overshooting.
-  max_vel_x: 0.4                  # Max forward speed (m/s)
+  max_vel_x: 0.5                  # Max forward speed (m/s) — bumped from 0.4 for more decisive movement
   min_vel_x: 0.0                  # Min forward speed (can stop but not reverse)
   max_vel_y: 0.0                  # No sideways motion (Husky is differential drive, not omnidirectional)
   min_vel_y: 0.0
 
-  max_vel_trans: 0.4              # Max translational velocity overall
-  min_vel_trans: 0.1              # Min translational velocity (below this, just stop)
+  max_vel_trans: 0.5              # Max translational velocity overall
+  min_vel_trans: 0.08             # Min translational velocity — lowered so robot creeps instead of stopping
   max_vel_theta: 0.8              # Max turning speed (rad/s)
   min_vel_theta: 0.1              # Min turning speed
 
@@ -70,7 +75,9 @@ DWAPlannerROS:
   # --- Forward simulation ---
   # The planner simulates possible trajectories this far into the future.
   # Longer = smoother paths but more computation.
-  sim_time: 2.0                   # Simulate 2 seconds ahead
+  # Increased to 3.0 so the planner looks further ahead in corridors,
+  # picking smoother arcs instead of last-second corrections.
+  sim_time: 3.0                   # Simulate 3 seconds ahead
   sim_granularity: 0.05           # Step size for simulation
   vx_samples: 10                  # Number of forward velocity options to try
   vy_samples: 1                   # Only 1 (no sideways motion)
