@@ -1,0 +1,584 @@
+<sdf version='1.7'>
+  <world name='crop_field'>
+    <!-- Lighting -->
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 -0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane -->
+    <model name='ground_plane'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>100</mu>
+                <mu2>50</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/DarkGrey</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <physics type='ode'>
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>100</real_time_update_rate>
+    </physics>
+
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.85 1.0 1</background>
+      <shadows>1</shadows>
+    </scene>
+
+    <!--
+      CROP ROW LAYOUT
+      ===============
+      6 rows of "plants" running along the X axis (east-west)
+      Each row is 12m long, rows spaced 1.5m apart in Y
+      Plants are 0.15m diameter cylinders, 0.4m tall, placed every 0.5m
+      Robot starts at Y=0 between rows 3 and 4 (y=-0.75 to y=0.75)
+
+      Row positions (Y coordinates):
+        Row 1: y = -3.75
+        Row 2: y = -2.25
+        Row 3: y = -0.75
+        Row 4: y =  0.75
+        Row 5: y =  2.25
+        Row 6: y =  3.75
+
+      Row X range: -1.0 to 11.0 (12m long)
+      Robot spawn: x=0, y=0 (in the aisle between rows 3 and 4)
+
+      Aisle width = 1.5m - 0.15m (plant diameter) = 1.35m clear
+      Husky width = 0.68m, so ~0.34m clearance on each side
+    -->
+
+    <!-- ==================== ROW 1 (y = -3.75) ==================== -->
+    <model name='row1_plant_00'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>-1.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_01'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>-0.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_02'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>0.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_03'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>0.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_04'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>1.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_05'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>1.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_06'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>2.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_07'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>2.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_08'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>3.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_09'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>3.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_10'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>4.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_11'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>4.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_12'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>5.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_13'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>5.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_14'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>6.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_15'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>6.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_16'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>7.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_17'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>7.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_18'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>8.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_19'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>8.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_20'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>9.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_21'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>9.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_22'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>10.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_23'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>10.5 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <model name='row1_plant_24'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material>
+        </visual>
+      </link>
+      <pose>11.0 -3.75 0.2 0 0 0</pose>
+    </model>
+
+    <!-- ==================== ROW 2 (y = -2.25) ==================== -->
+    <model name='row2_plant_00'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-1.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_01'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-0.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_02'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_03'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_04'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_05'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_06'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_07'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_08'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_09'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_10'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_11'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_12'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_13'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_14'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_15'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_16'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_17'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_18'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_19'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_20'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_21'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_22'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.0 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_23'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.5 -2.25 0.2 0 0 0</pose></model>
+    <model name='row2_plant_24'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>11.0 -2.25 0.2 0 0 0</pose></model>
+
+    <!-- ==================== ROW 3 (y = -0.75) ==================== -->
+    <model name='row3_plant_00'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-1.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_01'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-0.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_02'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_03'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_04'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_05'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_06'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_07'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_08'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_09'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_10'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_11'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_12'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_13'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_14'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_15'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_16'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_17'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_18'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_19'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_20'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_21'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_22'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.0 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_23'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.5 -0.75 0.2 0 0 0</pose></model>
+    <model name='row3_plant_24'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>11.0 -0.75 0.2 0 0 0</pose></model>
+
+    <!-- ==================== ROW 4 (y = 0.75) ==================== -->
+    <model name='row4_plant_00'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-1.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_01'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-0.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_02'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_03'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_04'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_05'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_06'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_07'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_08'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_09'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_10'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_11'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_12'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_13'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_14'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_15'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_16'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_17'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_18'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_19'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_20'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_21'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_22'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.0 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_23'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.5 0.75 0.2 0 0 0</pose></model>
+    <model name='row4_plant_24'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>11.0 0.75 0.2 0 0 0</pose></model>
+
+    <!-- ==================== ROW 5 (y = 2.25) ==================== -->
+    <model name='row5_plant_00'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-1.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_01'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-0.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_02'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_03'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_04'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_05'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_06'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_07'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_08'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_09'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_10'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_11'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_12'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_13'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_14'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_15'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_16'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_17'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_18'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_19'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_20'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_21'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_22'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.0 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_23'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.5 2.25 0.2 0 0 0</pose></model>
+    <model name='row5_plant_24'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>11.0 2.25 0.2 0 0 0</pose></model>
+
+    <!-- ==================== ROW 6 (y = 3.75) ==================== -->
+    <model name='row6_plant_00'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-1.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_01'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>-0.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_02'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_03'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>0.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_04'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_05'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>1.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_06'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_07'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>2.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_08'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_09'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>3.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_10'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_11'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>4.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_12'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_13'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>5.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_14'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_15'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>6.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_16'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_17'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>7.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_18'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_19'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>8.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_20'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_21'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>9.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_22'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.0 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_23'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>10.5 3.75 0.2 0 0 0</pose></model>
+    <model name='row6_plant_24'><static>1</static><link name='link'><collision name='collision'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry></collision><visual name='visual'><geometry><cylinder><radius>0.075</radius><length>0.4</length></cylinder></geometry><material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Green</name></script></material></visual></link><pose>11.0 3.75 0.2 0 0 0</pose></model>
+
+    <gui fullscreen='0'>
+      <camera name='user_camera'>
+        <pose>5.0 0 15 0 1.5707 0</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+  </world>
+</sdf>

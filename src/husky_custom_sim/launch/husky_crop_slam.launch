@@ -1,0 +1,52 @@
+<launch>
+  <!--
+    Crop Row SLAM Launch File
+    Starts Gazebo with crop row field + Husky + SLAM + RViz + keyboard teleop.
+    Drive the robot between crop rows while SLAM builds a map.
+    Use i/j/k/l keys to drive. Save map with:
+      rosrun map_server map_saver -f ~/catkin_ws/crop_map
+  -->
+
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Start Gazebo with crop row world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/crop_row.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn the Husky robot -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+
+  <!-- Static TF: base_link to velodyne (sensor is 0.4m above robot center) -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
+        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+
+  <!-- Convert Velodyne 3D point cloud to 2D laser scan -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="-0.3"/>
+    <param name="max_height" value="1.0"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <!-- SLAM Toolbox -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml" command="load"/>
+  </node>
+
+  <!-- RViz with map view -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"
+        args="-d $(find husky_custom_sim)/config/slam_view.rviz"/>
+
+  <!-- Keyboard teleop (i/j/k/l to drive) -->
+  <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
+        output="screen" launch-prefix="xterm -e">
+    <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
+  </node>
+</launch>
