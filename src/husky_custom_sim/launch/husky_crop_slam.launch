@@ -17,8 +17,15 @@
     <arg name="gui" value="true"/>
   </include>
 
-  <!-- Spawn the Husky robot -->
-  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+  <!-- Spawn the Husky robot 2m before the rows start.
+       Rows begin at X=0. Spawning at X=-2 gives a clear straight approach
+       into the aisle rather than starting surrounded by plants. -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch">
+    <arg name="x" value="-2.0"/>
+    <arg name="y" value="0.0"/>
+    <arg name="z" value="0.0"/>
+    <arg name="yaw" value="0.0"/>
+  </include>
 
   <!-- Re-spawn controllers with a longer timeout.
        WSL2 is slow — Gazebo takes ~60s to load the world, but the default
@@ -37,10 +44,14 @@
     <remap from="cloud_in" to="/velodyne_points"/>
     <remap from="scan" to="/scan"/>
     <param name="target_frame" value="base_link"/>
-    <param name="min_height" value="-0.3"/>
-    <param name="max_height" value="1.0"/>
+    <!-- Height filter in base_link frame. base_link is ~0.13m above ground.
+         min 0.05: exclude ground returns (ground is at -0.13 in base_link).
+         max 0.6: plants are 0.6m tall, Velodyne at 0.4m — captures plant
+         bodies cleanly without picking up sky or excessive noise above. -->
+    <param name="min_height" value="0.05"/>
+    <param name="max_height" value="0.6"/>
     <param name="range_min" value="0.2"/>
-    <param name="range_max" value="30.0"/>
+    <param name="range_max" value="15.0"/>
   </node>
 
   <!-- SLAM Toolbox -->
