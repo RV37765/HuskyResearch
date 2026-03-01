@@ -1,0 +1,131 @@
+<launch>
+  <!--
+    Crop Row Navigation Launch File
+    Loads the saved crop map and uses move_base to navigate to goals.
+    The robot spawns 2m before the rows in open space.
+
+    Prerequisites:
+      - crop_map.yaml + crop_map.pgm must exist in maps/
+        (save them with: rosrun map_server map_saver -f <path>/maps/crop_map)
+
+    Usage:
+      1. Launch this file and wait ~60s for everything to load
+      2. RobotModel in RViz turns blue = ready
+      3. Click "2D Nav Goal" in RViz and click anywhere in an aisle
+      4. Robot plans a path and drives there
+  -->
+
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Start Gazebo with the crop row world (includes overhead camera) -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find husky_custom_sim)/crop_row.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn the Husky 2m before the rows — same position as SLAM launch.
+       AMCL's initial_pose below must match this exactly. -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch">
+    <arg name="x" value="-2.0"/>
+    <arg name="y" value="0.0"/>
+    <arg name="z" value="0.0"/>
+    <arg name="yaw" value="0.0"/>
+  </include>
+
+  <!-- Controller respawner: Gazebo takes ~60s to load but default spawner
+       gives up at 30s. This one waits 120s so controllers always load. -->
+  <node name="controller_respawner" pkg="controller_manager" type="spawner"
+        args="--timeout 120 husky_joint_publisher husky_velocity_controller"
+        output="screen"/>
+
+  <!-- Static TF: Velodyne is 0.4m above base_link -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
+        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+
+  <!-- Velodyne point cloud → 2D laser scan.
+       Same height filter as SLAM launch: avoids ground returns,
+       captures plant bodies (0.6m tall), ignores sky above. -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
+        name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="0.05"/>
+    <param name="max_height" value="0.6"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="15.0"/>
+  </node>
+
+  <!-- Load the saved crop map.
+       map_server reads crop_map.yaml (which points to crop_map.pgm)
+       and publishes it on /map for the global costmap and AMCL. -->
+  <node pkg="map_server" type="map_server" name="map_server"
+        args="$(find husky_custom_sim)/maps/crop_map.yaml"/>
+
+  <!-- AMCL — localizes the robot on the saved map using particle filters.
+       Matches live laser scans against the crop_map to track position.
+       Initial pose must match the Gazebo spawn position (-2.0, 0.0). -->
+  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <param name="odom_frame_id" value="odom"/>
+    <param name="base_frame_id" value="base_link"/>
+    <param name="global_frame_id" value="map"/>
+    <param name="scan_topic" value="/scan"/>
+
+    <!-- Particle filter: more particles = better localization in
+         repetitive environments (crop rows look similar to each other). -->
+    <param name="min_particles" value="200"/>
+    <param name="max_particles" value="1000"/>
+
+    <!-- Odometry noise model -->
+    <param name="odom_model_type" value="diff"/>
+    <param name="odom_alpha1" value="0.2"/>
+    <param name="odom_alpha2" value="0.2"/>
+    <param name="odom_alpha3" value="0.2"/>
+    <param name="odom_alpha4" value="0.2"/>
+
+    <!-- Laser model — matched to crop field scale -->
+    <param name="laser_max_range" value="12.0"/>
+    <param name="laser_max_beams" value="60"/>
+    <param name="laser_z_hit" value="0.95"/>
+    <param name="laser_z_rand" value="0.05"/>
+
+    <!-- Update thresholds -->
+    <param name="update_min_d" value="0.1"/>
+    <param name="update_min_a" value="0.1"/>
+
+    <!-- Increased tolerance for slow simulation RTF (~0.15) -->
+    <param name="transform_tolerance" value="1.0"/>
+
+    <!-- Initial pose: must match spawn position (x=-2, y=0, facing +X) -->
+    <param name="initial_pose_x" value="-2.0"/>
+    <param name="initial_pose_y" value="0.0"/>
+    <param name="initial_pose_a" value="0.0"/>
+  </node>
+
+  <!-- move_base: global planner + DWA local planner + costmaps.
+       Listens for goals from RViz "2D Nav Goal" button.
+       Publishes directly to velocity controller (bypasses twist_mux). -->
+  <node pkg="move_base" type="move_base" name="move_base" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="global_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="local_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/global_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/local_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/move_base_params.yaml"
+              command="load"/>
+
+    <!-- Bypass twist_mux — send velocity commands directly to the controller -->
+    <remap from="cmd_vel" to="/husky_velocity_controller/cmd_vel"/>
+  </node>
+
+  <!-- RViz with navigation view.
+       Use "2D Nav Goal" tool to click a destination in an aisle. -->
+  <node pkg="rviz" type="rviz" name="rviz" output="screen"
+        args="-d $(find husky_custom_sim)/config/nav_view.rviz"/>
+
+</launch>
