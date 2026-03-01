@@ -20,6 +20,14 @@
   <!-- Spawn the Husky robot -->
   <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
 
+  <!-- Re-spawn controllers with a longer timeout.
+       WSL2 is slow — Gazebo takes ~60s to load the world, but the default
+       controller spawner (from spawn_husky.launch) gives up after 30s.
+       This node waits up to 120s so the controller always loads automatically. -->
+  <node name="controller_respawner" pkg="controller_manager" type="spawner"
+        args="--timeout 120 husky_joint_publisher husky_velocity_controller"
+        output="screen"/>
+
   <!-- Static TF: base_link to velodyne (sensor is 0.4m above robot center) -->
   <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
         args="0 0 0.4 0 0 0 base_link velodyne 100"/>
@@ -46,7 +54,8 @@
 
   <!-- Keyboard teleop (i/j/k/l to drive) -->
   <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
-        output="screen" launch-prefix="xterm -e">
+        output="screen" launch-prefix="xterm -fa 'Monospace' -fs 10 -e">
     <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
   </node>
+
 </launch>
