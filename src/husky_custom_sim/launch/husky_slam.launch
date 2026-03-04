@@ -52,7 +52,7 @@
        IMPORTANT: remap to /joy_teleop/cmd_vel because the Husky's twist_mux
        only accepts commands on specific topics. /cmd_vel is ignored. -->
   <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
-        output="screen" launch-prefix="xterm -e">
+        output="screen" launch-prefix="xterm -fa 'Monospace' -fs 10 -e">
     <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
   </node>
 </launch>

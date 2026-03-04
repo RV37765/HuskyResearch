@@ -17,8 +17,15 @@
     <arg name="gui" value="true"/>
   </include>
 
-  <!-- Spawn the Husky robot -->
-  <include file="$(find husky_gazebo)/launch/spawn_husky.launch"/>
+  <!-- Spawn the Husky robot 2m before the rows start.
+       Rows begin at X=0. Spawning at X=-2 gives a clear straight approach
+       into the aisle rather than starting surrounded by plants. -->
+  <include file="$(find husky_gazebo)/launch/spawn_husky.launch">
+    <arg name="x" value="-2.0"/>
+    <arg name="y" value="0.0"/>
+    <arg name="z" value="0.0"/>
+    <arg name="yaw" value="0.0"/>
+  </include>
 
   <!-- Re-spawn controllers with a longer timeout.
        WSL2 is slow — Gazebo takes ~60s to load the world, but the default
@@ -28,19 +35,25 @@
         args="--timeout 120 husky_joint_publisher husky_velocity_controller"
         output="screen"/>
 
-  <!-- Static TF: base_link to velodyne (sensor is 0.4m above robot center) -->
+  <!-- Static TF: base_link to velodyne.
+       Standard Clearpath VLP-16 mount (no tower): 0.30m forward, 0.34m up.
+       Accurate TF = accurate scan-to-odometry alignment = better SLAM maps. -->
   <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne"
-        args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+        args="0.30 0 0.34 0 0 0 base_link velodyne 100"/>
 
   <!-- Convert Velodyne 3D point cloud to 2D laser scan -->
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan" output="screen">
     <remap from="cloud_in" to="/velodyne_points"/>
     <remap from="scan" to="/scan"/>
     <param name="target_frame" value="base_link"/>
-    <param name="min_height" value="-0.3"/>
-    <param name="max_height" value="1.0"/>
+    <!-- Height filter in base_link frame. base_link is ~0.13m above ground.
+         min 0.05: exclude ground returns (ground is at -0.13 in base_link).
+         max 0.7: cotton plant collision cylinders are 0.8m tall. In base_link
+         frame that top is ~0.67m, so 0.7 captures the full stem cleanly. -->
+    <param name="min_height" value="0.05"/>
+    <param name="max_height" value="0.7"/>
     <param name="range_min" value="0.2"/>
-    <param name="range_max" value="30.0"/>
+    <param name="range_max" value="15.0"/>
   </node>
 
   <!-- SLAM Toolbox -->

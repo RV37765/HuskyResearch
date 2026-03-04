@@ -1,0 +1,61 @@
+<launch>
+  <!--
+    Real Robot SLAM Launch File
+    Maps the physical cotton field using the actual Husky A200 + VLP-16.
+
+    Prerequisites:
+      - Husky powered on, e-stop released (blue LED)
+      - Jetson booted, base robot drivers running (check: rostopic list | grep odom)
+      - VLP-16 publishing (check: rostopic hz /velodyne_points → ~10 Hz)
+      - This launch file runs ON THE JETSON over SSH
+
+    Usage:
+      1. SSH into Jetson:  ssh administrator@<robot_ip>
+      2. roslaunch husky_custom_sim husky_real_slam.launch
+      3. Open RViz on your laptop (add /map, /scan, /tf displays)
+      4. Drive the robot through all aisles using keyboard teleop or joystick
+      5. When done mapping, save the map:
+           rosrun map_server map_saver -f ~/catkin_ws/src/src/src/husky_custom_sim/maps/real_crop_map
+      6. Ctrl+C to stop this launch file
+
+    Differences from simulation launch:
+      - No Gazebo (real world exists)
+      - No spawn_husky (robot is physically present)
+      - No controller_respawner (Husky base controllers always running)
+      - No static TF for velodyne (URDF publishes TF tree automatically)
+      - cmd_vel goes through twist_mux (safety stack active)
+  -->
+
+  <param name="/use_sim_time" value="false"/>
+
+  <!-- Velodyne point cloud → 2D laser scan.
+       Height filter in base_link frame (base_link ~0.13m above ground):
+       - min 0.05: exclude ground returns
+       - max 0.70: capture cotton plant stems (adjust based on real plant height)
+       Start with these values, then tune by checking /scan in RViz. -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
+        name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/velodyne_points"/>
+    <remap from="scan" to="/scan"/>
+    <param name="target_frame" value="base_link"/>
+    <param name="min_height" value="0.05"/>
+    <param name="max_height" value="0.70"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="15.0"/>
+  </node>
+
+  <!-- SLAM Toolbox — builds the map in real time.
+       Same config as simulation; resolution and scan range apply equally. -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml" command="load"/>
+  </node>
+
+  <!-- Keyboard teleop — publishes to /joy_teleop/cmd_vel so twist_mux handles priority.
+       twist_mux lets joystick override keyboard. Both are lower priority than e-stop.
+       Click the xterm window to give it focus before driving. -->
+  <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
+        output="screen" launch-prefix="xterm -fa 'Monospace' -fs 10 -e">
+    <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
+  </node>
+
+</launch>

@@ -38,7 +38,7 @@ resolution: 0.05
 
 # --- Scan matching parameters ---
 # These control how slam_toolbox aligns new scans to the existing map.
-max_laser_range: 20.0           # Ignore readings beyond this (meters). Our Velodyne goes to 30m but 20m is plenty for indoor.
+max_laser_range: 12.0           # Crop field is ~9m long (X: -2 to 7). 12m captures the full field with margin.
 minimum_travel_distance: 0.1    # Don't add a new scan unless the robot moved at least this far (meters). Lower = more map updates.
 minimum_travel_heading: 0.1     # Or rotated at least this much (radians, ~6 degrees). Lower = more sensitive to rotation.
 
@@ -52,7 +52,7 @@ loop_match_minimum_response_coarse: 0.35
 loop_match_minimum_response_fine: 0.45
 
 # --- Map update ---
-map_update_interval: 2.0        # How often to publish the map (seconds). Lower = more frequent RViz updates.
+map_update_interval: 1.0        # Publish map every second — faster visual feedback in RViz.
 
 # --- Mode ---
 # online_async = build map in real time, non-blocking (best for simulation)

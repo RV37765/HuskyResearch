@@ -14,6 +14,12 @@ global_costmap:
   update_frequency: 1.0
   publish_frequency: 0.5          # How often to publish for RViz visualization
 
+  # --- Transform tolerance ---
+  # How stale a TF transform can be before the costmap rejects it.
+  # Default is 0.3s — too tight for slow simulation (RTF ~0.15).
+  # 1.0s matches the AMCL transform_tolerance setting.
+  transform_tolerance: 1.0
+
   # --- Static map ---
   # static_map: true means "load the map from map_server as my base layer"
   # This is your saved SLAM map — the walls, corridors, etc.
@@ -30,5 +36,8 @@ global_costmap:
   # 3. inflation_layer: the "caution tape" around all obstacles
   plugins:
     - {name: static_layer,    type: "costmap_2d::StaticLayer"}
-    - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+  # obstacle_layer removed: live scan data in the global costmap causes phantom
+  # obstacles when AMCL drifts slightly. Crop rows are repetitive, so drift is
+  # inevitable. The local costmap handles live obstacle avoidance; the global
+  # costmap should only represent the known, saved map layout.
