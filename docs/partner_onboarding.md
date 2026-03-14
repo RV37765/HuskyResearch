@@ -213,6 +213,43 @@ From there, the workflow is:
 
 The most useful thing you can do right now: **get Ubuntu 20.04 + ROS Noetic running on your laptop** and clone the repo. Everything else follows from there.
 
+### Required ROS packages
+
+After installing ROS Noetic (`sudo apt install ros-noetic-desktop-full`), install these additional packages:
+
+```bash
+sudo apt install \
+  ros-noetic-husky-simulator \
+  ros-noetic-husky-viz \
+  ros-noetic-husky-navigation \
+  ros-noetic-velodyne-description \
+  ros-noetic-velodyne-pointcloud \
+  ros-noetic-velodyne-simulator \
+  ros-noetic-pointcloud-to-laserscan \
+  ros-noetic-slam-toolbox \
+  ros-noetic-teleop-twist-keyboard \
+  ros-noetic-teleop-twist-joy \
+  ros-noetic-joy
+```
+
+### Workspace setup
+
+```bash
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+git clone https://github.com/RV37765/HuskyResearch.git src
+cd ~/catkin_ws
+catkin_make
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Every time you open a new terminal**, run:
+```bash
+source ~/catkin_ws/devel/setup.bash
+```
+Or add that line to your `~/.bashrc` so it runs automatically (the setup above does this).
+
 ---
 
 ## Key Things That Are Different on the Real Robot vs Simulation
