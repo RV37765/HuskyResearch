@@ -11,12 +11,26 @@
 
     Usage:
       1. SSH into Jetson:  ssh administrator@<robot_ip>
-      2. roslaunch husky_custom_sim husky_real_slam.launch
-      3. Open RViz on your laptop (add /map, /scan, /tf displays)
-      4. Drive the robot through all aisles using keyboard teleop or joystick
-      5. When done mapping, save the map:
-           rosrun map_server map_saver -f ~/catkin_ws/src/src/src/husky_custom_sim/maps/real_crop_map
-      6. Ctrl+C to stop this launch file
+      2. source ~/catkin_ws/devel/setup.bash
+      3. roslaunch husky_custom_sim husky_real_slam.launch
+      4. Open RViz on your laptop/lab computer:
+           export ROS_MASTER_URI=http://<robot_ip>:11311
+           export ROS_IP=<your_machine_ip>
+           rosrun rviz rviz
+         Add displays: Map (/map), LaserScan (/scan), TF (fixed frame: map)
+      5. Drive using the PS4 controller: hold L1 + left stick to move
+      6. Cover all aisles. When done, save the map in a second SSH terminal:
+           rosrun map_server map_saver -f ~/catkin_ws/src/src/husky_custom_sim/maps/real_crop_map
+      7. Ctrl+C to stop this launch file
+
+    PS4 Controller notes:
+      - joy_node reads from /dev/input/js0 (PS4 via Bluetooth)
+      - teleop_twist_joy converts joystick axes to Twist and publishes to /joy_teleop/cmd_vel
+      - twist_mux (from husky_bringup) routes this to the velocity controller
+      - Dead man's switch: hold L1 while moving the left stick. Release L1 = stop.
+      - If husky_bringup already runs joy_node on boot, you may see a duplicate
+        node warning — harmless. The bringup version and this one publish to the
+        same /joy_teleop/cmd_vel so driving will still work.
 
     Differences from simulation launch:
       - No Gazebo (real world exists)
@@ -24,6 +38,7 @@
       - No controller_respawner (Husky base controllers always running)
       - No static TF for velodyne (URDF publishes TF tree automatically)
       - cmd_vel goes through twist_mux (safety stack active)
+      - PS4 controller used instead of keyboard teleop
   -->
 
   <param name="/use_sim_time" value="false"/>
@@ -50,12 +65,30 @@
     <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml" command="load"/>
   </node>
 
-  <!-- Keyboard teleop — publishes to /joy_teleop/cmd_vel so twist_mux handles priority.
-       twist_mux lets joystick override keyboard. Both are lower priority than e-stop.
-       Click the xterm window to give it focus before driving. -->
-  <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop"
-        output="screen" launch-prefix="xterm -fa 'Monospace' -fs 10 -e">
+  <!-- PS4 Controller teleop.
+       joy_node reads raw button/axis data from the PS4 via Bluetooth (/dev/input/js0).
+       teleop_twist_joy converts that to a Twist message and publishes to /joy_teleop/cmd_vel,
+       which twist_mux routes to the velocity controller at lower priority than e-stop.
+
+       Dead man's switch: hold L1 (button 4) while moving the left stick.
+       - Left stick Y-axis (axis 1): forward/backward
+       - Left stick X-axis (axis 0): turning
+
+       NOTE: If husky_bringup starts joy_node automatically on boot, you may see a
+       duplicate node warning. This is harmless — comment out joy_node below if so. -->
+  <node pkg="joy" type="joy_node" name="joy_node" output="screen">
+    <param name="dev" value="/dev/input/js0"/>
+    <param name="deadzone" value="0.1"/>
+    <param name="autorepeat_rate" value="20"/>
+  </node>
+
+  <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_twist_joy" output="screen">
     <remap from="cmd_vel" to="/joy_teleop/cmd_vel"/>
+    <param name="axis_linear" value="1"/>
+    <param name="axis_angular" value="0"/>
+    <param name="scale_linear" value="0.5"/>
+    <param name="scale_angular" value="1.0"/>
+    <param name="enable_button" value="4"/>
   </node>
 
 </launch>
