@@ -3,7 +3,66 @@
 
 ---
 
-## STEP 0: Verify What's on the Jetson (Do This First)
+## BEFORE YOU START: Ask Daniel + Run Discovery
+
+### Ask Daniel first (blockers — can't proceed without these)
+
+1. **What is the SSH address?** How do you connect to the robot? (`ssh <user>@<ip>` — what are both?)
+2. **Has `catkin_make` been run** on the robot after the repo was cloned, or is it a fresh clone?
+3. **Is the workspace sourced in `~/.bashrc`?** Does a new SSH session automatically have ROS commands available?
+4. **Is slam_toolbox installed on the robot?** (He had a missing package error on his machine — confirm it's on the robot itself)
+
+---
+
+### Discovery block — run these immediately after SSH, before anything else
+
+Paste all output back to Claude. Each command takes <5 seconds.
+
+```bash
+# Who is this machine and what ROS version?
+cat /etc/os-release | grep -E "^VERSION="
+rosversion -d
+
+# What is already auto-running? (Husky bringup starts nodes on boot)
+rostopic list | grep -E "odom|velodyne|joy|cmd_vel|scan"
+
+# Is the VLP-16 publishing? (should be ~10 Hz)
+timeout 5 rostopic hz /velodyne_points
+
+# Is the PS4 controller visible as a device?
+ls /dev/input/js*
+
+# Are our required packages installed?
+rospack find slam_toolbox && echo "OK" || echo "MISSING"
+rospack find pointcloud_to_laserscan && echo "OK" || echo "MISSING"
+rospack find teleop_twist_joy && echo "OK" || echo "MISSING"
+
+# Are our launch files present on the robot?
+ls ~/catkin_ws/src/src/husky_custom_sim/launch/
+
+# Is the TF tree up? base_link → velodyne must exist before launch
+rosrun tf tf_echo base_link velodyne
+```
+
+---
+
+### What to report back (paste these exact outputs)
+
+| What | Expected | Action if wrong |
+|---|---|---|
+| `rosversion -d` | `noetic` | Flag — may need launch file changes |
+| `rostopic hz /velodyne_points` | `~10 Hz` | VLP-16 not running — see Step 3 |
+| `ls /dev/input/js*` | `/dev/input/js0` | PS4 not connected — re-pair before launch |
+| `rospack find slam_toolbox` | path printed | Install: `sudo apt install ros-noetic-slam-toolbox` |
+| `rospack find teleop_twist_joy` | path printed | Install: `sudo apt install ros-noetic-teleop-twist-joy` |
+| `tf_echo base_link velodyne` | transform printed | TF not up yet — wait and retry after bringup confirms |
+| `ls .../launch/` | `husky_real_slam.launch` in list | `catkin_make` not run — run it first |
+
+**Paste all of that back before launching anything.** This takes 2 minutes and prevents wasted time troubleshooting mid-session.
+
+---
+
+## STEP 0: Verify What's on the Robot (Do This First)
 
 Different Jetson models ship with different Ubuntu versions. This determines which ROS version is installed.
 
@@ -228,13 +287,13 @@ rosrun teleop_twist_keyboard teleop_twist_keyboard.py
 When you've mapped the full field, save while SLAM is still running:
 ```bash
 # Terminal 4 — On Jetson (SSH):
-rosrun map_server map_saver -f ~/catkin_ws/src/src/src/husky_custom_sim/maps/real_crop_map
+rosrun map_server map_saver -f ~/catkin_ws/src/src/husky_custom_sim/maps/real_crop_map
 ```
 
 This creates `real_crop_map.pgm` and `real_crop_map.yaml`. Copy these to your laptop for inspection:
 ```bash
 # On your laptop:
-scp <username>@<jetson_ip>:~/catkin_ws/src/src/src/husky_custom_sim/maps/real_crop_map.* \
+scp <username>@<robot_ip>:~/catkin_ws/src/src/husky_custom_sim/maps/real_crop_map.* \
     ~/Desktop/
 ```
 
