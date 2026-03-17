@@ -48,6 +48,9 @@
        - min 0.05: exclude ground returns
        - max 0.70: capture cotton plant stems (adjust based on real plant height)
        Start with these values, then tune by checking /scan in RViz. -->
+
+
+  <!--
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
         name="pointcloud_to_laserscan" output="screen">
     <remap from="cloud_in" to="/velodyne_points"/>
@@ -57,7 +60,12 @@
     <param name="max_height" value="0.70"/>
     <param name="range_min" value="0.2"/>
     <param name="range_max" value="15.0"/>
+    <param name="angle_min" value="-3.14159265"/>
+    <param name="angle_max" value="3.14159265"/>
+    <param name="angle_increment" value="0.01745329"/>
   </node>
+  -->
+
 
   <!-- SLAM Toolbox — builds the map in real time.
        Same config as simulation; resolution and scan range apply equally. -->
@@ -90,5 +98,8 @@
     <param name="scale_angular" value="1.0"/>
     <param name="enable_button" value="4"/>
   </node>
+
+  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"/>
+  <param name="slam_toolbox/scan_topic" value="/scan_fixed"/>
 
 </launch>
