@@ -31,19 +31,15 @@
 
   <param name="/use_sim_time" value="false"/>
 
-  <!-- Velodyne point cloud → 2D laser scan.
-       Must match the height filter used during SLAM mapping exactly.
-       If you change these values, you must re-run SLAM and save a new map. -->
-  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node"
-        name="pointcloud_to_laserscan" output="screen">
-    <remap from="cloud_in" to="/velodyne_points"/>
-    <remap from="scan" to="/scan"/>
-    <param name="target_frame" value="base_link"/>
-    <param name="min_height" value="0.05"/>
-    <param name="max_height" value="0.70"/>
-    <param name="range_min" value="0.2"/>
-    <param name="range_max" value="15.0"/>
-  </node>
+  <!-- pointcloud_to_laserscan is NOT started here.
+       husky_bringup (auto-starts on boot) already converts /velodyne_points
+       to /scan via velodyne_nodelet_manager. Running a second converter would
+       create two competing publishers on /scan — same issue as Day 1 of SLAM. -->
+
+  <!-- scan_relay: corrects VLP-16 /scan header mismatch before AMCL sees it.
+       The VLP-16 firmware sends 897 readings but the header implies 898.
+       AMCL uses the same scan validation as slam_toolbox — needs /scan_fixed. -->
+  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"/>
 
   <!-- Load the saved real field map.
        If map file not found, AMCL and move_base will fail silently.
@@ -59,7 +55,8 @@
     <param name="odom_frame_id" value="odom"/>
     <param name="base_frame_id" value="base_link"/>
     <param name="global_frame_id" value="map"/>
-    <param name="scan_topic" value="/scan"/>
+    <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
+    <param name="scan_topic" value="/scan_fixed"/>
 
     <!-- More particles for noisy real-world sensor data -->
     <param name="min_particles" value="500"/>
