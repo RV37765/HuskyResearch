@@ -2,5 +2,6 @@
     "files.associations": {
         "cmath": "cpp",
         "complex": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/administrator/HuskyRealWork/src/husky_custom_sim"
 }
