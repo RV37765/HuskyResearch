@@ -15,7 +15,7 @@ observation_sources: scan
 
 # "scan" source configuration:
 scan:
-  topic: /scan                    # The laser scan topic (from pointcloud_to_laserscan)
+  topic: /scan_fixed              # Use corrected scan from scan_relay.py (fixes VLP-16 897/898 header mismatch)
   data_type: LaserScan            # Type of message (not PointCloud2)
   marking: true                   # YES, use this data to mark cells as "obstacle"
   clearing: true                  # YES, use this data to clear cells as "free space"
