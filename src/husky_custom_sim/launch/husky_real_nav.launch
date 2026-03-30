@@ -45,7 +45,7 @@
        If map file not found, AMCL and move_base will fail silently.
        Verify path is correct before launching. -->
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find husky_custom_sim)/maps/hallway_full_map.yaml"/>
+        args="$(find husky_custom_sim)/maps/hallway_strip.yaml"/>
 
   <!-- AMCL — localizes the robot on the real field map.
        No hardcoded initial_pose: robot position is unknown on startup.
