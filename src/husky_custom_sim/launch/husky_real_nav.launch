@@ -8,7 +8,7 @@
         (generate with husky_real_slam.launch first, then map_saver)
       - Husky powered on, e-stop released, base drivers running
       - VLP-16 publishing at ~10 Hz (rostopic hz /velodyne_points)
-      - This launch file runs ON THE JETSON over SSH
+      - This launch file runs ON THE ROBOT (x86 PC) over SSH
 
     Usage:
       1. SSH into Jetson:  ssh administrator@<robot_ip>
@@ -58,9 +58,11 @@
     <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
     <param name="scan_topic" value="/scan_fixed"/>
 
-    <!-- More particles for noisy real-world sensor data -->
-    <param name="min_particles" value="500"/>
-    <param name="max_particles" value="2000"/>
+    <!-- Particle count — reduced from 500/2000 to ease CPU load on the robot PC.
+         500/2000 caused map update loop to take 15+ seconds under full nav stack.
+         100/500 is sufficient once AMCL has converged via global_localization. -->
+    <param name="min_particles" value="100"/>
+    <param name="max_particles" value="500"/>
 
     <!-- Odometry noise — real wheels slip more than simulation -->
     <param name="odom_model_type" value="diff"/>
@@ -75,9 +77,13 @@
     <param name="laser_z_hit" value="0.90"/>
     <param name="laser_z_rand" value="0.10"/>
 
-    <!-- Update thresholds — update more frequently on real hardware -->
-    <param name="update_min_d" value="0.1"/>
-    <param name="update_min_a" value="0.1"/>
+    <!-- Update thresholds set to 0 — forces AMCL to process every scan and
+         publish the map->odom TF continuously. Without this, AMCL only updates
+         when the robot moves 0.1m or rotates 0.1rad. If the robot pauses even
+         briefly, the TF goes stale after ~1 second and the costmap times out,
+         causing "Costmap2DROS transform timeout" and extrapolation errors. -->
+    <param name="update_min_d" value="0.0"/>
+    <param name="update_min_a" value="0.0"/>
 
     <!-- Transform tolerance — real hardware runs at full RTF (1.0) so default is fine.
          Increase to 0.5 if you see "transform too old" warnings. -->
