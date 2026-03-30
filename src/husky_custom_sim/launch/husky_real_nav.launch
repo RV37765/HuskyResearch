@@ -8,7 +8,7 @@
         (generate with husky_real_slam.launch first, then map_saver)
       - Husky powered on, e-stop released, base drivers running
       - VLP-16 publishing at ~10 Hz (rostopic hz /velodyne_points)
-      - This launch file runs ON THE JETSON over SSH
+      - This launch file runs ON THE ROBOT (x86 PC) over SSH
 
     Usage:
       1. SSH into Jetson:  ssh administrator@<robot_ip>

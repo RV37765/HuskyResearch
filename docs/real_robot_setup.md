@@ -1,5 +1,5 @@
 # Real Robot Setup Guide
-**Husky A200 + VLP-16 + NVIDIA Jetson — Physical Hardware**
+**Husky A200 + VLP-16 — Physical Hardware (x86 onboard PC, NOT Jetson)**
 
 ---
 
@@ -93,52 +93,39 @@ If you see active ROS services, the Jetson is already running `roscore` and the 
 
 ## STEP 1: Network Setup
 
-The Husky's Jetson is the **ROS Master** — it runs `roscore`. Your laptop is a client that connects to it over the network.
+The robot's onboard x86 PC is the **ROS Master** — it runs `roscore` and all ROS nodes. Your machine (laptop or Lab PC) SSHs into it to run commands. The robot is NOT a Jetson — it is a standard x86 computer built into the Husky chassis.
 
-### Find the robot's IP address
+### Two ways to SSH in
 
+**Option A — Ethernet (always works, static IP):**
+Plug an Ethernet cable between your machine and the Husky. The robot's Ethernet IP is always `192.168.131.1` — hardcoded, never changes.
 ```bash
-# On the Jetson (via SSH):
+ssh administrator@192.168.131.1
+# password: clearpath
+```
+
+**Option B — WiFi (wireless, dynamic IP):**
+The robot is also on campus WiFi with a dynamic IP that changes each session.
+To find it: connect via Ethernet first, then run on the robot:
+```bash
 hostname -I
-# Or check the network interface:
-ip addr show | grep inet
 ```
-
-Note this IP — you'll use it in every session. Clearpath robots often have a static IP like `192.168.131.1` on their internal Ethernet port.
-
-### On your laptop: Configure ROS networking
-
-Add these lines to your laptop's `~/.bashrc`:
+This returns two IPs — the first is `192.168.131.1` (Ethernet), the second is the current WiFi IP (e.g., `172.21.x.x`).
+You can then SSH from any machine on campus WiFi:
 ```bash
-# Replace with the Jetson's actual IP address
-export ROS_MASTER_URI=http://192.168.131.1:11311
-export ROS_IP=<YOUR_LAPTOP_IP>   # run: hostname -I to find this
+ssh administrator@172.21.x.x    # use the second IP from hostname -I
 ```
 
-Then reload:
-```bash
-source ~/.bashrc
-```
+**Recommended workflow:** plug Ethernet once at session start → run `hostname -I` → use the WiFi IP for the rest of the session from any machine wirelessly.
 
-**Test it works:**
-```bash
-# On your laptop (after configuring above):
-rostopic list    # Should show topics from the robot, not "connection refused"
-```
+### All commands run on the robot over SSH
 
-If `rostopic list` hangs, the network routing is wrong. The most common fix:
-- Make sure both machines are on the same network subnet
-- On Ethernet direct connection: set laptop to static IP `192.168.131.100`, netmask `255.255.255.0`
-
-### SSH into the Jetson
+You do NOT need ROS installed on your laptop to run SLAM or navigation. Every command runs on the robot via SSH. Your laptop is just a terminal window.
 
 ```bash
-ssh <username>@<jetson_ip>
-# Typical Clearpath default: ssh administrator@192.168.131.1
-# Or: ssh ubuntu@192.168.131.1
+# After SSH, source ROS (do this in every new SSH terminal):
+. ~/catkin_ws/devel/setup.bash
 ```
-
-You'll spend most of your time in this SSH terminal running ROS nodes on the Jetson. RViz runs locally on your laptop.
 
 ---
 
@@ -321,16 +308,21 @@ rviz
 # /particlecloud (PoseArray), /move_base/GlobalPlanner/plan (Path)
 ```
 
-**Wait for AMCL to converge.** You'll see a cloud of green arrows (particles) in RViz. Initially they're spread out. As the robot gets a few laser scans, they'll tighten to a cluster. This takes 5-15 seconds if the initial pose is close to the spawn position.
+**Tell AMCL where the robot is — no RViz needed:**
+In T2, after the launch is up (~5 seconds):
+```bash
+rosservice call /global_localization "{}"
+```
+This spreads AMCL particles across the entire map. Then drive the robot slowly for 10–15 seconds with the PS4 controller. AMCL matches live scans to the map and converges on the real position automatically.
 
-**If particles don't converge:**
-- Use the "2D Pose Estimate" button in RViz to manually tell AMCL where the robot is
-- Click on the robot's actual position on the map, drag the arrow to show heading
-
-**Send a goal:**
-- RViz toolbar → "2D Nav Goal"
-- Click inside an aisle on the map
-- Watch the robot plan and drive
+**Send a navigation goal from T2:**
+```bash
+rostopic pub /move_base_simple/goal geometry_msgs/PoseStamped \
+  '{header: {frame_id: "map"}, pose: {position: {x: 5.0, y: 2.0}, orientation: {w: 1.0}}}' \
+  --once
+```
+Replace `x` and `y` with coordinates inside the navigable area on your map.
+Watch T1 for: `[move_base] Goal reached!`
 
 ---
 

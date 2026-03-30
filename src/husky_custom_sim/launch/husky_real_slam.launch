@@ -7,7 +7,7 @@
       - Husky powered on, e-stop released (blue LED)
       - Jetson booted, base robot drivers running (check: rostopic list | grep odom)
       - VLP-16 publishing (check: rostopic hz /velodyne_points → ~10 Hz)
-      - This launch file runs ON THE JETSON over SSH
+      - This launch file runs ON THE ROBOT (x86 PC) over SSH
 
     Usage:
       1. SSH into Jetson:  ssh administrator@<robot_ip>
