@@ -119,8 +119,8 @@ def main():
     #
     # To change starting location: update the pixel coordinates below.
     # To change facing direction: yaw=0 faces map +x, yaw=3.14 faces map -x.
-    start_x, start_y = pixel_to_map(965, 257)
-    set_initial_pose(start_x, start_y, yaw=-2.74)
+    start_x, start_y = pixel_to_map(1044, 234)
+    set_initial_pose(start_x, start_y, yaw=-2.77)
     rospy.sleep(2)
 
     # Step 2 — wait for AMCL to converge from the pose hint
