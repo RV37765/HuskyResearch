@@ -133,7 +133,7 @@ def main():
 
     # Step 4 — send goal
     # Edit pixel coordinates to match your target on hallway_strip.pgm
-    map_x, map_y = pixel_to_map(681, 377)
+    map_x, map_y = pixel_to_map(360, 500)
     send_goal(map_x, map_y)
 
 
