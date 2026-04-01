@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import rospy
 import time
-from geometry_msgs.msg import Twist, PoseWithCovarianceStamped, PoseStamped
-from std_srvs.srv import Empty
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped
 
 # Map constants — must match hallway_strip.yaml
 ORIGIN_X   = -97.695411
@@ -40,29 +39,33 @@ def get_position():
     return map_x, map_y
 
 
-def trigger_global_localization():
-    rospy.loginfo("Spreading AMCL particles across map...")
-    rospy.wait_for_service('/global_localization', timeout=10)
-    rospy.ServiceProxy('/global_localization', Empty)()
-    rospy.loginfo("Global localization triggered.")
+def set_initial_pose(x, y, yaw):
+    """
+    Publish a known starting pose to /initialpose.
+    This is more reliable than global_localization in symmetric corridors
+    because it gives AMCL both position AND orientation, eliminating the
+    180-degree heading ambiguity that causes reversed navigation.
 
+    yaw is in radians (0 = facing map +x, pi = facing map -x).
+    Use pixel_to_map() to get x, y from the PGM image.
+    """
+    import math
+    pub = rospy.Publisher('/initialpose', PoseWithCovarianceStamped, queue_size=1)
+    rospy.sleep(0.5)
 
-def rotate_to_localize(duration=25, speed=0.3):
-    rospy.loginfo(f"Rotating {duration}s to help AMCL converge...")
-    pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-    rospy.sleep(1)  # wait for publisher to connect
+    msg = PoseWithCovarianceStamped()
+    msg.header.frame_id = 'map'
+    msg.header.stamp = rospy.Time.now()
+    msg.pose.pose.position.x = x
+    msg.pose.pose.position.y = y
+    msg.pose.pose.orientation.z = math.sin(yaw / 2.0)
+    msg.pose.pose.orientation.w = math.cos(yaw / 2.0)
+    msg.pose.covariance[0]  = 0.25   # x uncertainty (0.5m std dev)
+    msg.pose.covariance[7]  = 0.25   # y uncertainty
+    msg.pose.covariance[35] = 0.068  # yaw uncertainty (~15 degrees)
 
-    twist = Twist()
-    twist.angular.z = speed
-
-    start = time.time()
-    rate = rospy.Rate(10)
-    while time.time() - start < duration:
-        pub.publish(twist)
-        rate.sleep()
-
-    pub.publish(Twist())  # stop
-    rospy.loginfo("Rotation complete.")
+    pub.publish(msg)
+    rospy.loginfo(f"Initial pose set: map ({x:.2f}, {y:.2f}), yaw={math.degrees(yaw):.1f} deg")
 
 
 def wait_for_convergence(threshold=0.05, timeout=60):
@@ -107,22 +110,28 @@ def send_goal(x, y):
 def main():
     rospy.init_node('reliable_navigator')
 
-    # Step 1 — spread AMCL particles across the full map
-    trigger_global_localization()
+    # Step 1 — set known starting pose (position + orientation).
+    # Place the robot at the starting pixel on hallway_strip.pgm, physically
+    # facing toward the goal, then run this script.
+    #
+    # Starting pixel: (965, 257) — right side of corridor near lab entrance
+    # Facing toward goal (681, 377): yaw = -2.74 rad (~-157 degrees from +x)
+    #
+    # To change starting location: update the pixel coordinates below.
+    # To change facing direction: yaw=0 faces map +x, yaw=3.14 faces map -x.
+    start_x, start_y = pixel_to_map(1044, 234)
+    set_initial_pose(start_x, start_y, yaw=-2.77)
     rospy.sleep(2)
 
-    # Step 2 — rotate in place so AMCL sees scan variation from different angles
-    rotate_to_localize(duration=25, speed=0.3)
-
-    # Step 3 — wait for particles to converge to a confident estimate
-    if not wait_for_convergence(threshold=0.05, timeout=60):
-        rospy.logwarn("Could not localize — drive manually then retry")
+    # Step 2 — wait for AMCL to converge from the pose hint
+    if not wait_for_convergence(threshold=0.05, timeout=30):
+        rospy.logwarn("Could not localize — check that robot is at the expected starting position")
         return
 
-    # Step 4 — log confirmed position before moving
+    # Step 3 — log confirmed position before moving
     get_position()
 
-    # Step 5 — send goal
+    # Step 4 — send goal
     # Edit pixel coordinates to match your target on hallway_strip.pgm
     map_x, map_y = pixel_to_map(681, 377)
     send_goal(map_x, map_y)
