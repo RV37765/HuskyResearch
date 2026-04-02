@@ -11,8 +11,8 @@ global_costmap:
   # --- Update rate ---
   # The global costmap doesn't need to update as fast as the local one
   # because the saved map rarely changes. 1 Hz is plenty.
-  update_frequency: 0.2           # Global map is static — update rarely to save CPU
-  publish_frequency: 0.2          # How often to publish for visualization
+  update_frequency: 0.1           # Update once every 10s — global map is static walls only
+  publish_frequency: 0.1
 
   # --- Transform tolerance ---
   # How stale a TF transform can be before the costmap rejects it.
