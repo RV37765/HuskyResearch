@@ -133,6 +133,12 @@ def main():
     # Step 3 — log confirmed position
     get_position(listener)
 
+    # Brief pause — gives local costmap time to populate with scan data
+    # before the goal is sent. Without this, the local planner receives the
+    # global path before it has enough data to transform it.
+    rospy.loginfo("Waiting 3s for costmaps to populate...")
+    rospy.sleep(3.0)
+
     # Step 4 — send goal
     # Goal pixel (661, 810) on hallway_map_slam_test.pgm — short proven goal
     map_x, map_y = pixel_to_map(661, 810)
