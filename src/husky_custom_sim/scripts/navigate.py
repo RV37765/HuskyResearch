@@ -106,17 +106,13 @@ def main():
     listener = tf.TransformListener()
     rospy.sleep(1.0)  # give TF listener time to fill its buffer
 
-    # Step 1 — set known starting pose (position + orientation).
-    # Place the robot at the starting pixel on hallway_map_slam_test.pgm,
-    # physically facing toward the goal, then run this script.
-    #
-    # Start pixel (914, 981), facing toward goal (661, 810): yaw = 2.55 rad
-    # To change: update pixel coords and recompute yaw = atan2(dy, dx)
-    start_x, start_y = pixel_to_map(914, 981)
-    set_initial_pose(start_x, start_y, yaw=2.55)
-    rospy.sleep(2)
+    # Step 1 — drive manually with PS4 for 15-20 seconds before running this script.
+    # slam_toolbox will localize from scan matching as the robot moves through the space.
+    # No initial pose hint needed — self-localization test.
+    rospy.loginfo("Waiting for slam_toolbox to self-localize...")
+    rospy.loginfo("Drive the robot manually with PS4 for 15-20 seconds, then wait.")
 
-    # Step 2 — wait for slam_toolbox to publish TF from the pose hint
+    # Step 2 — wait for slam_toolbox to publish TF from scan matching
     if not wait_for_tf(listener, timeout=30):
         rospy.logwarn("Could not get TF — check slam_toolbox is running")
         return
