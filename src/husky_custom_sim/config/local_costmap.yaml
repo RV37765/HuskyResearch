@@ -12,8 +12,8 @@ local_costmap:
   # --- Update rate ---
   # The local costmap needs to update fast — it's the robot's "reflexes."
   # 5 Hz means the robot re-evaluates nearby obstacles 5 times per second.
-  update_frequency: 5.0
-  publish_frequency: 2.0          # How often to publish for RViz visualization
+  update_frequency: 3.0           # Reduced from 5Hz to share CPU with slam_toolbox
+  publish_frequency: 1.0
 
   # --- Transform tolerance ---
   # Same fix as global costmap — default 0.3s is too tight for slow RTF.
