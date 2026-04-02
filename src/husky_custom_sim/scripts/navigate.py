@@ -3,11 +3,11 @@ import rospy
 import time
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped
 
-# Map constants — must match hallway_strip.yaml
-ORIGIN_X   = -97.695411
-ORIGIN_Y   = -39.422331
+# Map constants — must match hallway_map_slam_test.yaml
+ORIGIN_X   = -47.875022
+ORIGIN_Y   = -2.997483
 RESOLUTION = 0.05
-HEIGHT     = 645
+HEIGHT     = 1097
 
 
 def pixel_to_map(pixel_x, pixel_y):
@@ -119,11 +119,13 @@ def main():
     #
     # To change starting location: update the pixel coordinates below.
     # To change facing direction: yaw=0 faces map +x, yaw=3.14 faces map -x.
-    start_x, start_y = pixel_to_map(1044, 234)
-    set_initial_pose(start_x, start_y, yaw=-2.77)
+    # Start pixel (914, 981) on hallway_map_slam_test.pgm
+    # Facing toward goal (661, 810): yaw = 2.55 rad (~146 degrees from +x)
+    start_x, start_y = pixel_to_map(914, 981)
+    set_initial_pose(start_x, start_y, yaw=2.55)
     rospy.sleep(2)
 
-    # Step 2 — wait for AMCL to converge from the pose hint
+    # Step 2 — wait for slam_toolbox to converge from the pose hint
     if not wait_for_convergence(threshold=0.05, timeout=30):
         rospy.logwarn("Could not localize — check that robot is at the expected starting position")
         return
@@ -132,8 +134,8 @@ def main():
     get_position()
 
     # Step 4 — send goal
-    # Edit pixel coordinates to match your target on hallway_strip.pgm
-    map_x, map_y = pixel_to_map(360, 500)
+    # Goal pixel (661, 810) on hallway_map_slam_test.pgm
+    map_x, map_y = pixel_to_map(661, 810)
     send_goal(map_x, map_y)
 
 
