@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import rospy
+import math
 import time
+import rospy
+import tf
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped
 
 # Map constants — must match hallway_map_slam_test.yaml
@@ -22,34 +24,29 @@ def map_to_pixel(map_x, map_y):
     return pixel_x, pixel_y
 
 
-def get_position():
-    rospy.loginfo("Reading current AMCL position...")
-    msg = rospy.wait_for_message('/amcl_pose', PoseWithCovarianceStamped, timeout=10)
-
-    map_x = msg.pose.pose.position.x
-    map_y = msg.pose.pose.position.y
-    pixel_x, pixel_y = map_to_pixel(map_x, map_y)
-    uncertainty = msg.pose.covariance[0] + msg.pose.covariance[7]
-
-    rospy.loginfo("========== ROBOT POSITION ==========")
-    rospy.loginfo(f"Map coords:   x={map_x:.2f}  y={map_y:.2f}")
-    rospy.loginfo(f"Pixel coords: x={pixel_x}  y={pixel_y}")
-    rospy.loginfo(f"Uncertainty:  {uncertainty:.5f}  (lower is better)")
-    rospy.loginfo("====================================")
-    return map_x, map_y
+def get_position(listener):
+    """Read robot position from TF (map -> base_link). Works with both AMCL and slam_toolbox."""
+    try:
+        listener.waitForTransform('map', 'base_link', rospy.Time(0), rospy.Duration(5.0))
+        (trans, rot) = listener.lookupTransform('map', 'base_link', rospy.Time(0))
+        map_x, map_y = trans[0], trans[1]
+        pixel_x, pixel_y = map_to_pixel(map_x, map_y)
+        rospy.loginfo("========== ROBOT POSITION ==========")
+        rospy.loginfo(f"Map coords:   x={map_x:.2f}  y={map_y:.2f}")
+        rospy.loginfo(f"Pixel coords: x={pixel_x}  y={pixel_y}")
+        rospy.loginfo("====================================")
+        return map_x, map_y
+    except (tf.Exception, tf.LookupException, tf.ConnectivityException) as e:
+        rospy.logwarn(f"Could not get position from TF: {e}")
+        return None, None
 
 
 def set_initial_pose(x, y, yaw):
     """
     Publish a known starting pose to /initialpose.
-    This is more reliable than global_localization in symmetric corridors
-    because it gives AMCL both position AND orientation, eliminating the
-    180-degree heading ambiguity that causes reversed navigation.
-
-    yaw is in radians (0 = facing map +x, pi = facing map -x).
-    Use pixel_to_map() to get x, y from the PGM image.
+    slam_toolbox listens to this topic just like AMCL does.
+    yaw in radians: 0 = facing map +x, pi = facing map -x.
     """
-    import math
     pub = rospy.Publisher('/initialpose', PoseWithCovarianceStamped, queue_size=1)
     rospy.sleep(0.5)
 
@@ -68,34 +65,31 @@ def set_initial_pose(x, y, yaw):
     rospy.loginfo(f"Initial pose set: map ({x:.2f}, {y:.2f}), yaw={math.degrees(yaw):.1f} deg")
 
 
-def wait_for_convergence(threshold=0.05, timeout=60):
+def wait_for_tf(listener, timeout=30):
     """
-    Wait until AMCL position uncertainty drops below threshold.
-    Uncertainty = sum of x and y variance from the covariance matrix.
-    Typical values: < 0.01 after /initialpose, < 0.05 after global_localization.
+    Wait until slam_toolbox publishes a valid map->base_link TF.
+    This replaces the AMCL covariance check — slam_toolbox doesn't publish
+    /amcl_pose, it just updates the TF tree directly.
     """
-    rospy.loginfo(f"Waiting for AMCL convergence (uncertainty < {threshold})...")
+    rospy.loginfo("Waiting for slam_toolbox to publish map->base_link TF...")
     deadline = time.time() + timeout
 
     while time.time() < deadline:
         try:
-            msg = rospy.wait_for_message('/amcl_pose', PoseWithCovarianceStamped, timeout=5)
-            uncertainty = msg.pose.covariance[0] + msg.pose.covariance[7]
-            rospy.loginfo(f"  uncertainty: {uncertainty:.5f}")
-            if uncertainty < threshold:
-                rospy.loginfo("AMCL converged.")
-                return True
-        except rospy.ROSException:
-            rospy.logwarn("No AMCL message received, retrying...")
+            listener.waitForTransform('map', 'base_link', rospy.Time(0), rospy.Duration(2.0))
+            rospy.loginfo("TF available — slam_toolbox is localizing.")
+            return True
+        except (tf.Exception, tf.LookupException, tf.ConnectivityException):
+            rospy.loginfo("TF not yet available, waiting...")
 
-    rospy.logwarn("AMCL did not converge within timeout.")
+    rospy.logwarn("slam_toolbox did not publish TF within timeout.")
     return False
 
 
 def send_goal(x, y):
     rospy.loginfo(f"Sending goal: map ({x:.2f}, {y:.2f})")
     pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
-    rospy.sleep(0.5)  # wait for publisher to connect
+    rospy.sleep(0.5)
 
     goal = PoseStamped()
     goal.header.frame_id = 'map'
@@ -109,29 +103,26 @@ def send_goal(x, y):
 
 def main():
     rospy.init_node('reliable_navigator')
+    listener = tf.TransformListener()
+    rospy.sleep(1.0)  # give TF listener time to fill its buffer
 
     # Step 1 — set known starting pose (position + orientation).
-    # Place the robot at the starting pixel on hallway_strip.pgm, physically
-    # facing toward the goal, then run this script.
+    # Place the robot at the starting pixel on hallway_map_slam_test.pgm,
+    # physically facing toward the goal, then run this script.
     #
-    # Starting pixel: (965, 257) — right side of corridor near lab entrance
-    # Facing toward goal (681, 377): yaw = -2.74 rad (~-157 degrees from +x)
-    #
-    # To change starting location: update the pixel coordinates below.
-    # To change facing direction: yaw=0 faces map +x, yaw=3.14 faces map -x.
-    # Start pixel (914, 981) on hallway_map_slam_test.pgm
-    # Facing toward goal (661, 810): yaw = 2.55 rad (~146 degrees from +x)
+    # Start pixel (914, 981), facing toward goal (661, 810): yaw = 2.55 rad
+    # To change: update pixel coords and recompute yaw = atan2(dy, dx)
     start_x, start_y = pixel_to_map(914, 981)
     set_initial_pose(start_x, start_y, yaw=2.55)
     rospy.sleep(2)
 
-    # Step 2 — wait for slam_toolbox to converge from the pose hint
-    if not wait_for_convergence(threshold=0.05, timeout=30):
-        rospy.logwarn("Could not localize — check that robot is at the expected starting position")
+    # Step 2 — wait for slam_toolbox to publish TF from the pose hint
+    if not wait_for_tf(listener, timeout=30):
+        rospy.logwarn("Could not get TF — check slam_toolbox is running")
         return
 
-    # Step 3 — log confirmed position before moving
-    get_position()
+    # Step 3 — log confirmed position
+    get_position(listener)
 
     # Step 4 — send goal
     # Goal pixel (661, 810) on hallway_map_slam_test.pgm
