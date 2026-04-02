@@ -11,7 +11,7 @@ base_local_planner: dwa_local_planner/DWAPlannerROS
 # Lowered to 2 Hz for slow simulation (RTF ~0.19). At higher frequencies
 # the controller outruns TF updates and gets extrapolation errors.
 # 2 Hz is gentle enough for slow sim while still being responsive.
-controller_frequency: 5.0
+controller_frequency: 3.0
 
 # --- Patience timers ---
 # How long (wall-clock seconds) move_base waits before giving up on a planner.

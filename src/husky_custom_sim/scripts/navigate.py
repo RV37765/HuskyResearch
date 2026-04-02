@@ -125,8 +125,8 @@ def main():
     get_position(listener)
 
     # Step 4 — send goal
-    # Goal pixel (175, 528) on hallway_map_slam_test.pgm — far end of corridor
-    map_x, map_y = pixel_to_map(175, 528)
+    # Goal pixel (661, 810) on hallway_map_slam_test.pgm
+    map_x, map_y = pixel_to_map(661, 810)
     send_goal(map_x, map_y)
 
 
