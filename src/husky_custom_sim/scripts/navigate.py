@@ -65,24 +65,37 @@ def set_initial_pose(x, y, yaw):
     rospy.loginfo(f"Initial pose set: map ({x:.2f}, {y:.2f}), yaw={math.degrees(yaw):.1f} deg")
 
 
-def wait_for_tf(listener, timeout=30):
+def wait_for_tf(listener, timeout=60):
     """
-    Wait until slam_toolbox publishes a valid map->base_link TF.
-    This replaces the AMCL covariance check — slam_toolbox doesn't publish
-    /amcl_pose, it just updates the TF tree directly.
+    Wait until slam_toolbox publishes a valid map->base_link TF with a position
+    that is actually inside the map bounds. A TF that exists but places the robot
+    outside the map means slam_toolbox hasn't localized yet.
     """
-    rospy.loginfo("Waiting for slam_toolbox to publish map->base_link TF...")
+    # Map bounds derived from origin + dimensions
+    x_min = ORIGIN_X
+    x_max = ORIGIN_X + 1265 * RESOLUTION
+    y_min = ORIGIN_Y
+    y_max = ORIGIN_Y + HEIGHT * RESOLUTION
+
+    rospy.loginfo("Waiting for slam_toolbox to localize (position must be inside map)...")
     deadline = time.time() + timeout
 
     while time.time() < deadline:
         try:
             listener.waitForTransform('map', 'base_link', rospy.Time(0), rospy.Duration(2.0))
-            rospy.loginfo("TF available — slam_toolbox is localizing.")
-            return True
+            (trans, _) = listener.lookupTransform('map', 'base_link', rospy.Time(0))
+            x, y = trans[0], trans[1]
+
+            if x_min < x < x_max and y_min < y < y_max:
+                rospy.loginfo(f"slam_toolbox localized: map ({x:.2f}, {y:.2f})")
+                return True
+            else:
+                rospy.loginfo(f"  position ({x:.2f}, {y:.2f}) outside map bounds — not yet localized, keep driving...")
         except (tf.Exception, tf.LookupException, tf.ConnectivityException):
             rospy.loginfo("TF not yet available, waiting...")
+        rospy.sleep(2.0)
 
-    rospy.logwarn("slam_toolbox did not publish TF within timeout.")
+    rospy.logwarn("slam_toolbox did not localize within timeout.")
     return False
 
 
