@@ -45,7 +45,7 @@
        If map file not found, AMCL and move_base will fail silently.
        Verify path is correct before launching. -->
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find husky_custom_sim)/maps/hallwayv2.yaml"/>
+        args="$(find husky_custom_sim)/maps/hallway_strip.yaml"/>
 
   <!-- AMCL — localizes the robot on the real field map.
        No hardcoded initial_pose: robot position is unknown on startup.
@@ -61,8 +61,8 @@
     <!-- Particle count — reduced from 500/2000 to ease CPU load on the robot PC.
          500/2000 caused map update loop to take 15+ seconds under full nav stack.
          100/500 is sufficient once AMCL has converged via global_localization. -->
-    <param name="min_particles" value="100"/>
-    <param name="max_particles" value="500"/>
+    <param name="min_particles" value="1000"/>
+    <param name="max_particles" value="4000"/>
 
     <!-- Odometry noise — real wheels slip more than simulation -->
     <param name="odom_model_type" value="diff"/>
@@ -87,8 +87,11 @@
 
     <!-- Transform tolerance — real hardware runs at full RTF (1.0) so default is fine.
          Increase to 0.5 if you see "transform too old" warnings. -->
-    <param name="transform_tolerance" value="0.3"/>
+    <param name="transform_tolerance" value="0.5"/>
+
+
   </node>
+
 
   <!-- move_base — global + local planner, drives to goals.
        Same config files as simulation; speed params may need tuning. -->
