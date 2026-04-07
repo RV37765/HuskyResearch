@@ -140,8 +140,8 @@ def main():
     rospy.sleep(3.0)
 
     # Step 4 — send goal
-    # Goal pixel (661, 810) on hallway_map_slam_test.pgm — short proven goal
-    map_x, map_y = pixel_to_map(661, 810)
+    # Goal pixel (984, 120) on hallway_map_slam_test.pgm
+    map_x, map_y = pixel_to_map(984, 120)
     send_goal(map_x, map_y)
 
 
