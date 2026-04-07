@@ -45,7 +45,7 @@
        If map file not found, AMCL and move_base will fail silently.
        Verify path is correct before launching. -->
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find husky_custom_sim)/maps/hallwayv2.yaml"/>
+        args="$(find husky_custom_sim)/maps/hallway_strip.yaml"/>
 
   <!-- AMCL — localizes the robot on the real field map.
        No hardcoded initial_pose: robot position is unknown on startup.
@@ -58,10 +58,10 @@
     <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
     <param name="scan_topic" value="/scan_fixed"/>
 
-    <!-- Particle count — increased from 100/500 after observing scan/map drift during
-         navigation. More particles = more hypotheses = better tracking in motion.
+    <!-- Particle count — increased after observing scan/map drift during navigation.
+         More particles = more hypotheses = better tracking in motion.
          5000 max gives AMCL room to spread during uncertain motion segments.
-         Monitor CPU with htop — reduce if move_base loop slows down. -->
+         Monitor CPU with htop — reduce max_particles if move_base loop slows down. -->
     <param name="min_particles" value="500"/>
     <param name="max_particles" value="5000"/>
 
@@ -93,8 +93,11 @@
 
     <!-- Transform tolerance — real hardware runs at full RTF (1.0) so default is fine.
          Increase to 0.5 if you see "transform too old" warnings. -->
-    <param name="transform_tolerance" value="0.3"/>
+    <param name="transform_tolerance" value="0.5"/>
+
+
   </node>
+
 
   <!-- move_base — global + local planner, drives to goals.
        Same config files as simulation; speed params may need tuning. -->

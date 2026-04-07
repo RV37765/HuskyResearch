@@ -120,7 +120,7 @@ def main():
     rospy.init_node('reliable_navigator')
 
     # Step 1 - set wide initial pose
-    set_wide_initial_pose()
+   # set_wide_initial_pose()
     time.sleep(2)
 
     # Step 2 - trigger global localization
@@ -151,7 +151,7 @@ def main():
         # Step 5 - send goal
         ##############################coordinates send here (pixel coordinates based on pgm file)
         map_x,map_y = pixel_to_map(681,377)
-        send_goal(map_x, map_y)
+        #send_goal(map_x, map_y)
     else:
         rospy.logwarn("Could not localize - try driving manually first")
 
