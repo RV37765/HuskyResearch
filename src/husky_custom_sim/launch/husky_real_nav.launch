@@ -58,22 +58,28 @@
     <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
     <param name="scan_topic" value="/scan_fixed"/>
 
-    <!-- Particle count — reduced from 500/2000 to ease CPU load on the robot PC.
-         500/2000 caused map update loop to take 15+ seconds under full nav stack.
-         100/500 is sufficient once AMCL has converged via global_localization. -->
-    <param name="min_particles" value="100"/>
-    <param name="max_particles" value="500"/>
+    <!-- Particle count — increased from 100/500 after observing scan/map drift during
+         navigation. More particles = more hypotheses = better tracking in motion.
+         5000 max gives AMCL room to spread during uncertain motion segments.
+         Monitor CPU with htop — reduce if move_base loop slows down. -->
+    <param name="min_particles" value="500"/>
+    <param name="max_particles" value="5000"/>
 
-    <!-- Odometry noise — real wheels slip more than simulation -->
+    <!-- Odometry noise — tightened from 0.5/0.5/0.3/0.3 to trust encoders more.
+         The hallway has a smooth floor and the Husky's wheel encoders are fairly
+         accurate. Tighter alphas keep the particle cloud focused during motion,
+         reducing the smearing that causes scan/map misalignment at speed. -->
     <param name="odom_model_type" value="diff"/>
-    <param name="odom_alpha1" value="0.5"/>
-    <param name="odom_alpha2" value="0.5"/>
-    <param name="odom_alpha3" value="0.3"/>
-    <param name="odom_alpha4" value="0.3"/>
+    <param name="odom_alpha1" value="0.2"/>
+    <param name="odom_alpha2" value="0.2"/>
+    <param name="odom_alpha3" value="0.1"/>
+    <param name="odom_alpha4" value="0.1"/>
 
-    <!-- Laser model -->
+    <!-- Laser model — increased beams from 60 to 180 for better scan matching.
+         More beams give the likelihood model more data points to align against
+         the map, producing more confident resampling during motion. -->
     <param name="laser_max_range" value="12.0"/>
-    <param name="laser_max_beams" value="60"/>
+    <param name="laser_max_beams" value="180"/>
     <param name="laser_z_hit" value="0.90"/>
     <param name="laser_z_rand" value="0.10"/>
 
