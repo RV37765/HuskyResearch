@@ -49,7 +49,7 @@ DWAPlannerROS:
   # --- Speed limits ---
   # The Husky can go faster, but in simulation with slow RTF,
   # keeping speeds moderate prevents overshooting.
-  max_vel_x: 0.25                 # Max forward speed (m/s) — reduced from 0.5 to give AMCL more
+  max_vel_x: 0.50                 # Max forward speed (m/s) — reduced from 0.5 to give AMCL more
                                   # scan updates per meter, preventing scan/map drift during navigation
   min_vel_x: 0.0                  # Min forward speed (can stop but not reverse)
   max_vel_y: 0.0                  # No sideways motion (Husky is differential drive, not omnidirectional)
@@ -63,9 +63,9 @@ DWAPlannerROS:
   # --- Acceleration limits ---
   # How fast the robot can speed up or slow down.
   # Conservative values prevent jerky motion.
-  acc_lim_x: 1.0                  # Forward acceleration (m/s^2)
+  acc_lim_x: 0.8                  # Forward acceleration (m/s^2)
   acc_lim_y: 0.0                  # No sideways acceleration
-  acc_lim_theta: 1.5              # Turning acceleration (rad/s^2)
+  acc_lim_theta: 0.8             # Turning acceleration (rad/s^2)
 
   # --- Goal tolerances ---
   # How close is "close enough" to the goal?
