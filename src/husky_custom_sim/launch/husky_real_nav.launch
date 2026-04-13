@@ -47,17 +47,21 @@
   <node pkg="map_server" type="map_server" name="map_server"
         args="$(find husky_custom_sim)/maps/hallway_strip.yaml"/>
 
+
+
   <!-- AMCL — localizes the robot on the real field map.
        No hardcoded initial_pose: robot position is unknown on startup.
        Use "2D Pose Estimate" in RViz to give AMCL a starting hint if needed.
        Higher particle counts than simulation — real sensor noise requires more hypotheses. -->
-  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+<node pkg="amcl" type="amcl" name="amcl" output="screen" >
     <param name="odom_frame_id" value="odom"/>
     <param name="base_frame_id" value="base_link"/>
     <param name="global_frame_id" value="map"/>
     <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
-    <param name="scan_topic" value="/scan_fixed"/>
+   <param name="scan_topic" value="/scan"/> 
 
+
+  <param name="odom_frame_id" value="odom"/>
     <!-- Particle count — increased after observing scan/map drift during navigation.
          More particles = more hypotheses = better tracking in motion.
          5000 max gives AMCL room to spread during uncertain motion segments.
@@ -93,8 +97,11 @@
 
     <!-- Transform tolerance — real hardware runs at full RTF (1.0) so default is fine.
          Increase to 0.5 if you see "transform too old" warnings. -->
-    <param name="transform_tolerance" value="0.5"/>
+    <param name="transform_tolerance" value="1"/>
 
+<param name="initial_pose_x" value="0.0"/>
+<param name="initial_pose_y" value="0.0"/>
+<param name="initial_pose_a" value="0.0"/>
 
   </node>
 

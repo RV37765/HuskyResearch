@@ -11,14 +11,14 @@ global_costmap:
   # --- Update rate ---
   # The global costmap doesn't need to update as fast as the local one
   # because the saved map rarely changes. 1 Hz is plenty.
-  update_frequency: 0.05          # Update once every 20s — static map rarely changes
-  publish_frequency: 0.05
+  update_frequency: 1.0          # Update once every 20s — static map rarely changes
+  publish_frequency: 0.5
 
   # --- Transform tolerance ---
   # How stale a TF transform can be before the costmap rejects it.
   # Default is 0.3s — too tight for slow simulation (RTF ~0.15).
   # 1.0s matches the AMCL transform_tolerance setting.
-  transform_tolerance: 1.0
+  transform_tolerance: 2.0
 
   # --- Static map ---
   # static_map: true means "load the map from map_server as my base layer"

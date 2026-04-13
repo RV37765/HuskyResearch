@@ -73,7 +73,8 @@
     <param name="odom_frame_id" value="odom"/>
     <param name="base_frame_id" value="base_link"/>
     <param name="global_frame_id" value="map"/>
-    <param name="scan_topic" value="/scan"/>
+   <param name="scan_topic" value="/scan"/> 
+    <remap from="scan" to="/scan"/>
 
     <!-- Particle filter: more particles = better localization in
          repetitive environments (crop rows look similar to each other). -->
