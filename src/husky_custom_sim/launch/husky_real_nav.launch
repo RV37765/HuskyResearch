@@ -58,10 +58,7 @@
     <param name="base_frame_id" value="base_link"/>
     <param name="global_frame_id" value="map"/>
     <!-- Use corrected scan topic from scan_relay — NOT raw /scan -->
-   <param name="scan_topic" value="/scan"/> 
-
-
-  <param name="odom_frame_id" value="odom"/>
+    <param name="scan_topic" value="/scan_fixed"/>
     <!-- Particle count — increased after observing scan/map drift during navigation.
          More particles = more hypotheses = better tracking in motion.
          5000 max gives AMCL room to spread during uncertain motion segments.
@@ -99,9 +96,8 @@
          Increase to 0.5 if you see "transform too old" warnings. -->
     <param name="transform_tolerance" value="1"/>
 
-<param name="initial_pose_x" value="0.0"/>
-<param name="initial_pose_y" value="0.0"/>
-<param name="initial_pose_a" value="0.0"/>
+    <!-- No hardcoded initial_pose — use global_localization + manual driving to localize.
+         (0,0) on hallway_strip is off the map edge and causes immediate AMCL failure.) -->
 
   </node>
 
