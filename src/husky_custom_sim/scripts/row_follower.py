@@ -34,13 +34,13 @@ MAX_ANGULAR     = 0.4       # Max turn rate (rad/s) — prevents overcorrection
 # The VLP-16 scan is 360 degrees. We sample left and right side sectors.
 # Angles are relative to robot forward (0 rad = straight ahead).
 # Positive = left, negative = right (ROS convention).
-LEFT_ANGLE_MIN  = 0.3       # ~17 degrees from forward
-LEFT_ANGLE_MAX  = 1.2       # ~69 degrees from forward
-RIGHT_ANGLE_MIN = -1.2      # ~69 degrees from forward (right)
-RIGHT_ANGLE_MAX = -0.3      # ~17 degrees from forward (right)
+LEFT_ANGLE_MIN  = 0.2       # ~11 degrees from forward
+LEFT_ANGLE_MAX  = 1.5       # ~86 degrees from forward
+RIGHT_ANGLE_MIN = -1.5      # ~86 degrees from forward (right)
+RIGHT_ANGLE_MAX = -0.2      # ~11 degrees from forward (right)
 
 # Ignore scan points beyond this distance — far obstacles aren't row boundaries
-MAX_RANGE = 3.0             # meters — crop rows are narrow, ignore distant walls
+MAX_RANGE = 5.0             # meters — increased to handle wider corridor sections
 
 # Minimum number of valid points required on each side to act
 MIN_POINTS = 5
