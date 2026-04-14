@@ -39,7 +39,8 @@
   <!-- scan_relay: corrects VLP-16 /scan header mismatch before AMCL sees it.
        The VLP-16 firmware sends 897 readings but the header implies 898.
        AMCL uses the same scan validation as slam_toolbox — needs /scan_fixed. -->
-  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"/>
+  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"
+        respawn="true" respawn_delay="2.0"/>
 
   <!-- Load the saved real field map.
        If map file not found, AMCL and move_base will fail silently.
