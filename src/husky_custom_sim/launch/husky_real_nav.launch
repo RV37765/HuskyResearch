@@ -89,8 +89,11 @@
          when the robot moves 0.1m or rotates 0.1rad. If the robot pauses even
          briefly, the TF goes stale after ~1 second and the costmap times out,
          causing "Costmap2DROS transform timeout" and extrapolation errors. -->
-    <param name="update_min_d" value="0.0"/>
-    <param name="update_min_a" value="0.0"/>
+    <!-- Update thresholds: only resample when robot actually moves.
+         0.0/0.0 caused drift while stationary — odometry noise fed into
+         motion model every scan cycle, walking particles away from true pose. -->
+    <param name="update_min_d" value="0.05"/>
+    <param name="update_min_a" value="0.1"/>
 
     <!-- Transform tolerance — real hardware runs at full RTF (1.0) so default is fine.
          Increase to 0.5 if you see "transform too old" warnings. -->
