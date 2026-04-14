@@ -42,8 +42,8 @@
 
   <!-- map_server: publishes the PGM map for move_base costmaps and Foxglove display.
        slam_toolbox localization handles the TF — map_server just provides the occupancy grid. -->
-  <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find husky_custom_sim)/maps/hallwayv2.yaml"/>
+  <!-- <node pkg="map_server" type="map_server" name="map_server"
+        args="$(find husky_custom_sim)/maps/hallwayv2.yaml"/> -->
 
   <!-- move_base — global + local planner, drives to goals.
        Unchanged from before — localization source is transparent to move_base. -->
