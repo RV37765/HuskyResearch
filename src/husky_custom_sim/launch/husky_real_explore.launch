@@ -1,0 +1,72 @@
+<launch>
+  <!--
+    Autonomous Exploration Launch File
+    Builds a map in real time using slam_toolbox while explore_lite
+    autonomously navigates to unexplored frontiers.
+
+    No pre-built map required — the robot maps and navigates simultaneously.
+
+    Prerequisites:
+      - Husky powered on, e-stop released, base drivers running
+      - VLP-16 publishing at ~10 Hz (rostopic hz /velodyne_points)
+      - This launch file runs ON THE ROBOT (x86 PC) over SSH
+
+    Usage:
+      1. roslaunch husky_custom_sim husky_real_explore.launch
+      2. Watch Foxglove — the map grows as the robot explores
+      3. When done, save the map:
+           rosservice call /slam_toolbox/serialize_map "filename: '/home/administrator/HuskyRealWork/src/husky_custom_sim/maps/explored_map'"
+           rosrun map_server map_saver -f /home/administrator/HuskyRealWork/src/husky_custom_sim/maps/explored_map
+      4. That map can then be used for AMCL navigation in husky_real_nav.launch
+  -->
+
+  <param name="/use_sim_time" value="false"/>
+
+  <!-- scan_relay: corrects VLP-16 /scan header mismatch (897 vs 898 readings) -->
+  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"
+        respawn="true" respawn_delay="2.0"/>
+
+  <!-- slam_toolbox in online async mapping mode.
+       Builds a map in real time from VLP-16 scans.
+       Publishes /map and the map->odom TF that move_base needs. -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox"
+        output="screen" launch-prefix="nice -n 5">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml"
+              command="load"/>
+    <!-- Override scan topic to use corrected scan -->
+    <param name="scan_topic" value="/scan_fixed"/>
+  </node>
+
+  <!-- move_base — global + local planner.
+       Uses rolling window costmaps (no static map) since map is being built live. -->
+  <node pkg="move_base" type="move_base" name="move_base" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="global_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/costmap_common.yaml"
+              command="load" ns="local_costmap"/>
+    <rosparam file="$(find husky_custom_sim)/config/explore_global_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/local_costmap.yaml"
+              command="load"/>
+    <rosparam file="$(find husky_custom_sim)/config/move_base_params.yaml"
+              command="load"/>
+    <remap from="cmd_vel" to="/cmd_vel"/>
+  </node>
+
+  <!-- explore_lite — frontier-based autonomous exploration.
+       Finds boundaries between known and unknown space, sends the robot there.
+       The robot explores until no frontiers remain (full map built). -->
+  <node pkg="explore_lite" type="explore" name="explore" output="screen">
+    <param name="robot_base_frame" value="base_link"/>
+    <param name="costmap_topic" value="move_base/global_costmap/costmap"/>
+    <param name="costmap_updates_topic" value="move_base/global_costmap/costmap_updates"/>
+    <param name="visualize" value="true"/>
+    <param name="planner_frequency" value="0.33"/>
+    <param name="progress_timeout" value="30.0"/>
+    <param name="potential_scale" value="3.0"/>
+    <param name="gain_scale" value="1.0"/>
+    <param name="transform_tolerance" value="1.0"/>
+    <param name="min_frontier_size" value="0.5"/>
+  </node>
+
+</launch>
