@@ -11,15 +11,16 @@ global_costmap:
 
   transform_tolerance: 1.0
 
-  # No static map — slam_toolbox publishes /map live
+  # Use slam_toolbox's live /map topic as the static layer.
+  # This gives explore_lite the unknown (-1) cells it needs to find frontiers.
   static_map: false
-
-  # Rolling window follows the robot as it explores
-  rolling_window: true
-  width: 10.0
-  height: 10.0
-  resolution: 0.05
+  rolling_window: false
 
   plugins:
+    - {name: static_layer,    type: "costmap_2d::StaticLayer"}
     - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+
+static_layer:
+  map_topic: /map
+  subscribe_to_updates: true
