@@ -1,0 +1,41 @@
+<launch>
+  <!--
+    Row Mapping Launch File
+    Drives the robot down crop rows using LiDAR centering (row_follower.py)
+    while simultaneously building a map with slam_toolbox.
+
+    No pre-built map required. No move_base. No waypoints.
+    The row structure itself guides the robot; slam_toolbox records where it went.
+
+    Usage:
+      1. Place robot at the entry of a row
+      2. roslaunch husky_custom_sim husky_real_row_map.launch
+      3. rosrun husky_custom_sim row_follower.py   (second terminal)
+      4. Robot drives down the row slowly, building a map
+      5. At row end, Ctrl+C row_follower, manually turn robot to next row
+      6. rosrun husky_custom_sim row_follower.py again for next row
+      7. When done, save the map:
+           rosservice call /slam_toolbox/serialize_map "filename: '/home/administrator/HuskyRealWork/src/husky_custom_sim/maps/field_map'"
+           rosrun map_server map_saver -f /home/administrator/HuskyRealWork/src/husky_custom_sim/maps/field_map
+
+    The saved map can then be used with husky_real_nav.launch for future
+    autonomous navigation without needing row_follower at all.
+  -->
+
+  <param name="/use_sim_time" value="false"/>
+
+  <!-- scan_relay: corrects VLP-16 /scan header mismatch -->
+  <node pkg="husky_custom_sim" type="scan_relay.py" name="scan_relay" output="screen"
+        respawn="true" respawn_delay="2.0"/>
+
+  <!-- slam_toolbox in online async mapping mode.
+       Builds a map in real time as row_follower drives the robot.
+       Publishes /map for Foxglove visualization. -->
+  <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox"
+        output="screen" launch-prefix="nice -n 5">
+    <rosparam file="$(find husky_custom_sim)/config/slam_toolbox_params.yaml"
+              command="load"/>
+    <param name="scan_topic" value="/scan_fixed"/>
+  </node>
+
+</launch>
