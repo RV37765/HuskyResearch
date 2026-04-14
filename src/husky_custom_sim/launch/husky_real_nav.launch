@@ -93,6 +93,9 @@
     <!-- Update thresholds: only resample when robot actually moves.
          0.0/0.0 caused drift while stationary — odometry noise fed into
          motion model every scan cycle, walking particles away from true pose. -->
+    <!-- Update when robot moves 5cm or rotates 0.1rad.
+         Small non-zero values prevent noise-driven drift while stationary,
+         but still allow AMCL to track motion normally. -->
     <param name="update_min_d" value="0.05"/>
     <param name="update_min_a" value="0.1"/>
 
