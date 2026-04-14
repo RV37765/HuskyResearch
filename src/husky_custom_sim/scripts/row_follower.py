@@ -9,15 +9,14 @@ How it works:
   4. If left is closer than right → steer right, and vice versa
   5. Publishes a Twist to /cmd_vel to correct heading
 
-This runs ON TOP of the navigation stack — move_base handles getting the robot
-to the right row, row_follower keeps it centered while traveling down it.
+Run on top of husky_slam_nav.launch:
+  1. roslaunch husky_custom_sim husky_slam_nav.launch
+  2. rosrun husky_custom_sim row_follower.py
+  Robot will drive forward, center itself between walls/rows, and
+  slam_toolbox builds a map of the environment as it goes.
 
-To use:
-  1. Launch nav stack: roslaunch husky_custom_sim husky_real_nav.launch
-  2. Send robot to row entry waypoint via navigate.py
-  3. Once inside the row: rosrun husky_custom_sim row_follower.py
-  4. Robot will drive forward keeping equal distance to both sides
-  5. Ctrl+C to stop when robot reaches end of row
+At row end (both walls disappear), robot slows and holds last correction
+to handle corners gracefully rather than driving blind.
 """
 
 import rospy
@@ -26,63 +25,59 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
 # --- Tuning parameters ---
-FORWARD_SPEED   = 0.15      # m/s — slow and steady through crop rows
-ANGULAR_GAIN    = 1.2       # How aggressively to correct heading (higher = more reactive)
-MAX_ANGULAR     = 0.4       # Max turn rate (rad/s) — prevents overcorrection
+FORWARD_SPEED   = 0.20      # m/s — slightly faster for smoother mapping
+ANGULAR_GAIN    = 1.2       # How aggressively to correct heading
+MAX_ANGULAR     = 0.4       # Max turn rate (rad/s)
 
 # --- Scan angle windows ---
-# The VLP-16 scan is 360 degrees. We sample left and right side sectors.
-# Angles are relative to robot forward (0 rad = straight ahead).
-# Positive = left, negative = right (ROS convention).
-LEFT_ANGLE_MIN  = 0.2       # ~11 degrees from forward
-LEFT_ANGLE_MAX  = 1.5       # ~86 degrees from forward
-RIGHT_ANGLE_MIN = -1.5      # ~86 degrees from forward (right)
-RIGHT_ANGLE_MAX = -0.2      # ~11 degrees from forward (right)
+# Angles relative to robot forward (0 = straight ahead, positive = left)
+LEFT_ANGLE_MIN  = 0.2       # ~11 degrees
+LEFT_ANGLE_MAX  = 1.5       # ~86 degrees
+RIGHT_ANGLE_MIN = -1.5      # ~86 degrees
+RIGHT_ANGLE_MAX = -0.2      # ~11 degrees
 
-# Ignore scan points beyond this distance — far obstacles aren't row boundaries
-MAX_RANGE = 5.0             # meters — increased to handle wider corridor sections
+# Max range to consider — ignore distant walls, focus on immediate row boundaries
+MAX_RANGE = 5.0             # meters
 
-# Minimum number of valid points required on each side to act
+# Minimum valid points required on each side to use that reading
 MIN_POINTS = 5
+
+# How long to hold the last correction when walls disappear (seconds)
+COAST_DURATION = 2.0
 
 
 class RowFollower:
     def __init__(self):
         rospy.init_node('row_follower')
 
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        self.cmd_pub  = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.scan_sub = rospy.Subscriber('/scan_fixed', LaserScan, self.scan_callback)
 
-        self.latest_scan = None
-        rospy.loginfo("Row follower started. Waiting for scan data...")
-        rospy.loginfo(f"Forward speed: {FORWARD_SPEED} m/s")
-        rospy.loginfo(f"Correction gain: {ANGULAR_GAIN}")
+        self.latest_scan    = None
+        self.last_angular   = 0.0       # last valid correction — used during coasting
+        self.last_seen_time = None      # when we last had valid readings on both sides
+
+        rospy.loginfo("Row follower started.")
+        rospy.loginfo(f"Speed: {FORWARD_SPEED} m/s  |  Gain: {ANGULAR_GAIN}  |  Max range: {MAX_RANGE}m")
 
     def scan_callback(self, msg):
         self.latest_scan = msg
 
     def get_side_distance(self, msg, angle_min, angle_max):
-        """
-        Average distance to obstacles within an angular window.
-        Returns None if fewer than MIN_POINTS valid readings exist.
-        """
+        """Average distance to obstacles within an angular window. Returns None if insufficient points."""
         distances = []
-
         for i, distance in enumerate(msg.ranges):
             angle = msg.angle_min + i * msg.angle_increment
-
             if angle_min <= angle <= angle_max:
                 if msg.range_min < distance < min(msg.range_max, MAX_RANGE):
                     if not np.isnan(distance) and not np.isinf(distance):
                         distances.append(distance)
-
         if len(distances) < MIN_POINTS:
             return None
-
         return np.mean(distances)
 
     def run(self):
-        rate = rospy.Rate(10)  # 10 Hz control loop
+        rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
             if self.latest_scan is None:
@@ -90,32 +85,46 @@ class RowFollower:
                 continue
 
             scan = self.latest_scan
-
             left_dist  = self.get_side_distance(scan, LEFT_ANGLE_MIN,  LEFT_ANGLE_MAX)
             right_dist = self.get_side_distance(scan, RIGHT_ANGLE_MIN, RIGHT_ANGLE_MAX)
 
             twist = Twist()
             twist.linear.x = FORWARD_SPEED
 
-            if left_dist is None or right_dist is None:
-                # Can't see one side — go straight, don't guess
-                twist.angular.z = 0.0
-                side = "left" if left_dist is None else "right"
-                rospy.logwarn_throttle(2.0, f"Can't see {side} side — going straight")
-            else:
-                # Positive error = left is closer = steer right (negative angular)
+            if left_dist is not None and right_dist is not None:
+                # Both walls visible — normal centering
                 error = left_dist - right_dist
                 twist.angular.z = -ANGULAR_GAIN * error
                 twist.angular.z = max(-MAX_ANGULAR, min(MAX_ANGULAR, twist.angular.z))
+
+                self.last_angular   = twist.angular.z
+                self.last_seen_time = rospy.Time.now()
 
                 rospy.loginfo_throttle(1.0,
                     f"L={left_dist:.2f}m  R={right_dist:.2f}m  "
                     f"err={error:.3f}  angular={twist.angular.z:.3f}")
 
+            else:
+                # One or both walls missing — coast with last correction briefly
+                now = rospy.Time.now()
+                coast_ok = (self.last_seen_time is not None and
+                            (now - self.last_seen_time).to_sec() < COAST_DURATION)
+
+                if coast_ok:
+                    # Hold last angular correction — helps navigate corners
+                    twist.angular.z = self.last_angular * 0.5  # damped
+                    side = "left" if left_dist is None else "right"
+                    rospy.logwarn_throttle(1.0,
+                        f"Can't see {side} — coasting with angular={twist.angular.z:.3f}")
+                else:
+                    # No walls for too long — go straight, don't guess
+                    twist.angular.z = 0.0
+                    rospy.logwarn_throttle(2.0, "No walls detected — going straight")
+
             self.cmd_pub.publish(twist)
             rate.sleep()
 
-        # Stop the robot when node shuts down
+        # Stop cleanly on shutdown
         self.cmd_pub.publish(Twist())
         rospy.loginfo("Row follower stopped.")
 
