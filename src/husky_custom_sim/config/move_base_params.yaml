@@ -63,7 +63,7 @@ DWAPlannerROS:
   # --- Acceleration limits ---
   # How fast the robot can speed up or slow down.
   # Conservative values prevent jerky motion.
-  acc_lim_x: 0.8                  # Forward acceleration (m/s^2)
+  acc_lim_x: 0.50                  # Forward acceleration (m/s^2)
   acc_lim_y: 0.0                  # No sideways acceleration
   acc_lim_theta: 0.8             # Turning acceleration (rad/s^2)
 
