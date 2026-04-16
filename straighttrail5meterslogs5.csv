@@ -1,0 +1,40 @@
+[INFO] [1776364311.006438]: Row follower started. Waiting for scan data...
+[INFO] [1776364311.010238]: Forward speed: 0.15 m/s
+[INFO] [1776364311.015064]: Lateral gain: 1.2  |  Heading gain: 1.5
+[INFO] [1776364311.018855]: Max heading correction: 20 deg
+[INFO] [1776364311.132073]: Row heading locked: -157.3 deg
+[INFO] [1776364311.135941]: L=2.86m  R=1.57m  lat_err=1.294  hdg_err=0.0deg  angular=-0.400
+[INFO] [1776364312.232346]: L=2.74m  R=1.92m  lat_err=0.823  hdg_err=-15.2deg  angular=-0.400
+[INFO] [1776364313.331941]: L=2.35m  R=2.21m  lat_err=0.140  hdg_err=-27.8deg  angular=0.182
+[INFO] [1776364314.332168]: L=2.35m  R=2.10m  lat_err=0.258  hdg_err=-19.8deg  angular=0.041
+[INFO] [1776364315.332500]: L=2.32m  R=2.08m  lat_err=0.236  hdg_err=-16.1deg  angular=0.067
+[INFO] [1776364316.432435]: L=2.28m  R=2.04m  lat_err=0.240  hdg_err=-12.6deg  angular=0.041
+[INFO] [1776364317.532431]: L=2.17m  R=1.99m  lat_err=0.174  hdg_err=-9.6deg  angular=0.043
+[INFO] [1776364318.532520]: L=2.03m  R=1.94m  lat_err=0.088  hdg_err=-6.5deg  angular=0.066
+[INFO] [1776364319.632326]: L=2.00m  R=1.90m  lat_err=0.103  hdg_err=-4.3deg  angular=-0.010
+[INFO] [1776364320.632585]: L=1.98m  R=1.90m  lat_err=0.086  hdg_err=-4.1deg  angular=0.004
+[INFO] [1776364321.732437]: L=1.97m  R=1.89m  lat_err=0.087  hdg_err=-3.8deg  angular=-0.007
+[INFO] [1776364322.829071]: L=1.96m  R=1.89m  lat_err=0.075  hdg_err=-3.7deg  angular=0.006
+[INFO] [1776364323.829111]: L=1.98m  R=1.89m  lat_err=0.087  hdg_err=-3.6deg  angular=-0.009
+[INFO] [1776364324.829119]: L=1.97m  R=1.89m  lat_err=0.084  hdg_err=-3.8deg  angular=-0.001
+[INFO] [1776364325.829135]: L=1.95m  R=1.86m  lat_err=0.089  hdg_err=-3.4deg  angular=-0.017
+[INFO] [1776364326.829138]: L=1.99m  R=1.88m  lat_err=0.115  hdg_err=-3.9deg  angular=-0.037
+[INFO] [1776364327.932531]: L=2.03m  R=1.88m  lat_err=0.151  hdg_err=-6.1deg  angular=-0.021
+[INFO] [1776364329.032383]: L=1.95m  R=1.86m  lat_err=0.087  hdg_err=-5.9deg  angular=0.050
+[INFO] [1776364330.129496]: L=1.91m  R=1.83m  lat_err=0.081  hdg_err=-4.2deg  angular=0.013
+[INFO] [1776364331.132724]: L=1.90m  R=1.81m  lat_err=0.092  hdg_err=-3.9deg  angular=-0.009
+[INFO] [1776364332.232483]: L=1.88m  R=1.88m  lat_err=-0.007  hdg_err=-2.7deg  angular=0.078
+[INFO] [1776364333.332392]: L=1.90m  R=1.85m  lat_err=0.053  hdg_err=-1.9deg  angular=-0.012
+[INFO] [1776364334.332428]: L=1.95m  R=1.88m  lat_err=0.072  hdg_err=-3.1deg  angular=-0.006
+[INFO] [1776364335.332686]: L=1.92m  R=1.89m  lat_err=0.038  hdg_err=-2.9deg  angular=0.030
+[INFO] [1776364336.432469]: L=1.91m  R=1.86m  lat_err=0.051  hdg_err=-1.8deg  angular=-0.013
+[INFO] [1776364337.432492]: L=1.94m  R=1.87m  lat_err=0.065  hdg_err=-1.4deg  angular=-0.042
+[INFO] [1776364338.530110]: L=1.94m  R=1.88m  lat_err=0.062  hdg_err=-2.3deg  angular=-0.016
+[INFO] [1776364339.532611]: L=1.93m  R=1.88m  lat_err=0.052  hdg_err=-1.9deg  angular=-0.012
+[INFO] [1776364340.629484]: L=1.97m  R=1.90m  lat_err=0.078  hdg_err=-1.9deg  angular=-0.043
+[INFO] [1776364341.632354]: L=2.02m  R=1.92m  lat_err=0.104  hdg_err=-2.5deg  angular=-0.060
+[INFO] [1776364342.632427]: L=2.00m  R=1.95m  lat_err=0.043  hdg_err=-3.6deg  angular=0.042
+[INFO] [1776364343.732418]: L=2.02m  R=1.94m  lat_err=0.080  hdg_err=-3.0deg  angular=-0.017
+[INFO] [1776364344.732589]: L=2.01m  R=1.94m  lat_err=0.073  hdg_err=-3.0deg  angular=-0.009
+[INFO] [1776364345.732561]: L=2.00m  R=1.94m  lat_err=0.062  hdg_err=-2.7deg  angular=-0.003
+[INFO] [1776364346.432913]: Row follower stopped.
