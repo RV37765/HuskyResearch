@@ -148,25 +148,31 @@ class RowFollower:
                 heading_error  = angle_diff(self.current_yaw, self.row_heading)
                 heading_cmd    = -HEADING_GAIN * heading_error
 
-                # Clamp heading correction — this is the key constraint.
-                # The robot cannot turn more than MAX_HEADING_CORRECTION rad
-                # from the row heading, so doorways and side corridors are ignored.
-                heading_cmd = np.clip(heading_cmd,
-                                      -MAX_HEADING_CORRECTION,
-                                       MAX_HEADING_CORRECTION)
-
-                # Combine and clamp total angular output
-                twist.angular.z = np.clip(lateral_cmd + heading_cmd,
-                                          -MAX_ANGULAR, MAX_ANGULAR)
+                # Priority logic: if heading has drifted beyond threshold,
+                # suppress lateral correction entirely and correct heading only.
+                # This prevents side corridors and doorways from pulling the robot
+                # off course — lateral correction cannot override a heading violation.
+                if abs(heading_error) > np.radians(15):
+                    twist.angular.z = np.clip(-HEADING_GAIN * heading_error,
+                                              -MAX_ANGULAR, MAX_ANGULAR)
+                    rospy.logwarn_throttle(1.0,
+                        f"Heading priority — hdg_err={np.degrees(heading_error):.1f}deg  "
+                        f"angular={twist.angular.z:.3f}")
+                else:
+                    # Normal operation — lateral + heading combined
+                    heading_cmd = np.clip(heading_cmd,
+                                          -MAX_HEADING_CORRECTION,
+                                           MAX_HEADING_CORRECTION)
+                    twist.angular.z = np.clip(lateral_cmd + heading_cmd,
+                                              -MAX_ANGULAR, MAX_ANGULAR)
+                    rospy.loginfo_throttle(1.0,
+                        f"L={left_dist:.2f}m  R={right_dist:.2f}m  "
+                        f"lat_err={lateral_error:.3f}  "
+                        f"hdg_err={np.degrees(heading_error):.1f}deg  "
+                        f"angular={twist.angular.z:.3f}")
 
                 self.last_angular   = twist.angular.z
                 self.last_seen_time = rospy.Time.now()
-
-                rospy.loginfo_throttle(1.0,
-                    f"L={left_dist:.2f}m  R={right_dist:.2f}m  "
-                    f"lat_err={lateral_error:.3f}  "
-                    f"hdg_err={np.degrees(heading_error):.1f}deg  "
-                    f"angular={twist.angular.z:.3f}")
 
             else:
                 # One or both walls missing — coast briefly with last correction
