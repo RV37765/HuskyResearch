@@ -21,6 +21,8 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # headless — no display required
 import matplotlib.pyplot as plt
 
 
@@ -32,19 +34,19 @@ def load_odom_csv(csv_path):
     x = df['field.pose.pose.position.x'].values
     y = df['field.pose.pose.position.y'].values
 
-    # Extract yaw from quaternion if columns exist
+    # Extract yaw from quaternion using numpy (no ROS dependency)
     yaw = None
     if all(c in df.columns for c in ['field.pose.pose.orientation.x',
                                       'field.pose.pose.orientation.y',
                                       'field.pose.pose.orientation.z',
                                       'field.pose.pose.orientation.w']):
-        from tf.transformations import euler_from_quaternion
         qx = df['field.pose.pose.orientation.x'].values
         qy = df['field.pose.pose.orientation.y'].values
         qz = df['field.pose.pose.orientation.z'].values
         qw = df['field.pose.pose.orientation.w'].values
-        yaw = np.array([euler_from_quaternion([qx[i], qy[i], qz[i], qw[i]])[2]
-                        for i in range(len(qx))])
+        # yaw = atan2(2*(qw*qz + qx*qy), 1 - 2*(qy^2 + qz^2))
+        yaw = np.arctan2(2.0 * (qw * qz + qx * qy),
+                         1.0 - 2.0 * (qy * qy + qz * qz))
 
     # Normalize to start at origin
     x = x - x[0]
@@ -129,10 +131,11 @@ def analyze(csv_path, label=None):
     ax2.legend()
 
     plt.tight_layout()
-    out_path = f'{label}_analysis.png'
+    os.makedirs('results', exist_ok=True)
+    out_path = os.path.join('results', f'{label}_analysis.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close()
     print(f"  Plot saved: {out_path}")
-    plt.show()
 
     return {
         'label': label,
