@@ -49,29 +49,28 @@ DWAPlannerROS:
   # --- Speed limits ---
   # The Husky can go faster, but in simulation with slow RTF,
   # keeping speeds moderate prevents overshooting.
-  max_vel_x: 0.50                 # Max forward speed (m/s) — reduced from 0.5 to give AMCL more
-                                  # scan updates per meter, preventing scan/map drift during navigation
+  max_vel_x: 0.5                  # Max forward speed (m/s) — bumped from 0.4 for more decisive movement
   min_vel_x: 0.0                  # Min forward speed (can stop but not reverse)
   max_vel_y: 0.0                  # No sideways motion (Husky is differential drive, not omnidirectional)
   min_vel_y: 0.0
 
-  max_vel_trans: 0.25             # Max translational velocity overall — matches max_vel_x
-  min_vel_trans: 0.05             # Min translational velocity — lowered so robot creeps instead of stopping
+  max_vel_trans: 0.5              # Max translational velocity overall
+  min_vel_trans: 0.04             # Low enough to creep during final approach without overshooting goal
   max_vel_theta: 0.8              # Max turning speed (rad/s)
   min_vel_theta: 0.1              # Min turning speed
 
   # --- Acceleration limits ---
   # How fast the robot can speed up or slow down.
   # Conservative values prevent jerky motion.
-  acc_lim_x: 0.50                  # Forward acceleration (m/s^2)
+  acc_lim_x: 1.0                  # Forward acceleration (m/s^2)
   acc_lim_y: 0.0                  # No sideways acceleration
-  acc_lim_theta: 0.8             # Turning acceleration (rad/s^2)
+  acc_lim_theta: 1.5              # Turning acceleration (rad/s^2)
 
   # --- Goal tolerances ---
   # How close is "close enough" to the goal?
-  xy_goal_tolerance: 0.20         # Within 20cm of the goal position
-  yaw_goal_tolerance: 0.15        # Within ~9 degrees of the goal orientation
-  latch_xy_goal_tolerance: false  # Don't lock in position tolerance early
+  xy_goal_tolerance: 0.20         # Within 20cm — unchanged, preserves positioning accuracy
+  yaw_goal_tolerance: 0.30        # Within ~17 degrees — looser than 0.15 so robot settles cleanly
+  latch_xy_goal_tolerance: true   # KEY FIX: once xy satisfied, only correct yaw, stops the position/yaw overshoot loop
 
   # --- Forward simulation ---
   # The planner simulates possible trajectories this far into the future.
