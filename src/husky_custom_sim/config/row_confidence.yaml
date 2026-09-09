@@ -1,0 +1,50 @@
+# row_confidence.yaml — parameters for row_confidence.py (PCA row-detection
+# confidence). See scripts/row_confidence.py for the full rationale.
+#
+# Load into a node's private namespace under the "row_confidence" sub-namespace
+# so these keys can't collide with the node's own params:
+#
+#   <node pkg="husky_custom_sim" type="row_confidence.py" name="row_confidence" output="screen">
+#     <rosparam file="$(find husky_custom_sim)/config/row_confidence.yaml"
+#               command="load" ns="row_confidence"/>
+#     <param name="scan_topic" value="/scan_fixed"/>
+#   </node>
+#
+# row_follower_v2 will load the same file the same way and construct
+# RowConfidence("~row_confidence").
+
+# --- Forward-facing ROI strip (sensor frame: x = forward, y = left) ----------
+roi_x_min: 0.3          # m — near edge; ignore returns right on top of the robot
+roi_x_max: 4.0          # m — far edge of the strip we run PCA on
+roi_y_abs_max: 0.70     # m — half-width. Cotton row spacing ~0.9 m, so the two
+                        # bounding rows sit ~0.45 m off center: 0.70 keeps them in
+                        # the strip and excludes the next rows out (~1.35 m).
+
+# --- Height band --------------------------------------------------------------
+# Only applied on the score_xyz() path (a LaserScan has no per-point z; the
+# upstream pointcloud_to_laserscan already slices height for /scan_fixed).
+# MUST stay YAML-tunable: cotton grows through the season, so the useful stem
+# band shifts. Defaults match the crop pointcloud_to_laserscan config.
+z_min: 0.05            # m
+z_max: 0.70            # m
+
+max_range: 5.0         # m — keep in step with row_follower.py MAX_RANGE
+
+# --- Point-count gates ------------------------------------------------------
+min_points: 12          # min ROI points to attempt PCA when side_split is false
+min_points_per_side: 6  # min points per side when side_split is true
+
+# --- Left/right split ------------------------------------------------------
+side_split: true          # score a left cluster and a right cluster separately
+side_combine: "mean"      # "mean" = average the two sides; "min" = stricter gate
+one_side_penalty: 0.7     # confidence multiplier when only one row is visible
+
+# --- Temporal smoothing --------------------------------------------------
+window_size: 10             # scans in the rolling window (~1 s at ~9.9 Hz)
+require_full_window: true    # report 0.0 until the window fills (cold-start guard)
+temporal_mode: "mean"       # "mean" of the window, or "fraction" of scans
+per_frame_threshold: 0.6    #   at/above this value (only used by "fraction")
+
+# --- FOLLOW gate ---------------------------------------------------------
+confidence_threshold: 0.80  # is_confident() true at/above this smoothed value
+                            # (cross-checked by a peer running the same VLP-16)
