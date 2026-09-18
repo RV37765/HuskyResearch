@@ -40,7 +40,10 @@ side_combine: "mean"      # "mean" = average the two sides; "min" = stricter gat
 one_side_penalty: 0.7     # confidence multiplier when only one row is visible
 
 # --- Temporal smoothing --------------------------------------------------
-window_size: 10             # scans in the rolling window (~1 s at ~9.9 Hz)
+window_size: 15             # scans in the rolling window (~1.5 s at ~9.9 Hz).
+                            # Peer running the same VLP-16 on row crops requires
+                            # ~15 scans of sustained evidence before a row-end
+                            # verdict; matching that here.
 require_full_window: true    # report 0.0 until the window fills (cold-start guard)
 temporal_mode: "mean"       # "mean" of the window, or "fraction" of scans
 per_frame_threshold: 0.6    #   at/above this value (only used by "fraction")

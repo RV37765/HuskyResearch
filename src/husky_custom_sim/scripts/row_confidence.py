@@ -98,7 +98,7 @@ DEFAULTS = {
     "one_side_penalty": 0.7,   # multiplier when only one side has enough points
 
     # Temporal smoothing.
-    "window_size": 10,         # scans (~1 s at the VLP-16's ~9.9 Hz)
+    "window_size": 15,         # scans (~1.5 s at the VLP-16's ~9.9 Hz)
     "require_full_window": True,   # report 0.0 until the window has filled
     "temporal_mode": "mean",      # "mean" of the window, or "fraction" ...
     "per_frame_threshold": 0.6,   # ... of scans at/above this (fraction mode)
