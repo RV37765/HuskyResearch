@@ -35,14 +35,27 @@ this file directly also starts a small diagnostic node that republishes the
 confidence on /row_confidence/confidence so you can watch it in rqt_plot or
 Foxglove before wiring it into a controller.
 
-GOTCHA — ROI aspect ratio
--------------------------
-A long, thin ROI strip (default 3.7 m deep x 0.70 m half-width) is itself
-elongated, so even diffuse / random returns inside it score a moderate linearity
-(~0.6 in testing) rather than ~0. Clean rows score ~0.98, so the 0.80 FOLLOW
-gate still separates them, but don't read a mid-range score as "half a row" —
-it's mostly the strip's own shape. Shrinking roi_x_max tightens this. Tune the
-ROI and confidence_threshold together in sim before trusting them on the robot.
+GOTCHA — ROI aspect ratio (diagnosed 2026-09-19, fix below not yet live-tested)
+-------------------------------------------------------------------------------
+A long, thin ROI strip (default 3.7 m deep x 0.70 m half-width, ~5:1 per side
+once side_split halves the width) is itself elongated, so even diffuse /
+random returns inside it score a moderate linearity rather than ~0 — pure
+scatter uniformly filling a 5:1 rectangle produces lambda_max/lambda_min ~ 25
+from the rectangle's own shape alone, nothing to do with row structure. Live
+hallway testing (2026-09-18) showed this made ACQUIRE take 85-110+ seconds and
+FOLLOWING drop out in stretches that looked clean. The linearity formula
+itself (1 - lambda_min/lambda_max) is standard point-cloud literature — the
+bug is computing it over one elongated pooled region instead of a roughly
+isotropic neighborhood.
+
+FIX: patch_mode (opt-in, default False — not yet confirmed live). Instead of
+one PCA over the whole elongated strip, tile it into patch_length_x-wide
+squarish patches along x and average (or min-combine) each patch's linearity.
+A real row stays linear at any patch length; pure scatter does not, because
+each patch is close to 1:1 rather than 5:1. See _patch_linearity(). Turn it on
+for testing with `_row_confidence/patch_mode:=true` before flipping the YAML
+default — confirm offline synthetic tests improve, then re-run the live
+hallway test that showed the 85-110s ACQUIRE time.
 
 PARAMETERS
 ----------
@@ -96,6 +109,13 @@ DEFAULTS = {
     "side_split": True,
     "side_combine": "mean",    # "mean" (average the two) or "min" (stricter)
     "one_side_penalty": 0.7,   # multiplier when only one side has enough points
+
+    # Patch-based scoring (fix for the ROI aspect-ratio bug -- see GOTCHA
+    # above). Off by default: not yet confirmed on real hardware.
+    "patch_mode": False,
+    "patch_length_x": 0.70,    # m -- matches roi_y_abs_max so patches are ~square
+    "patch_min_points": 5,     # points required inside a patch to score it
+    "patch_combine": "mean",   # "mean" or "min" across qualifying patches
 
     # Temporal smoothing.
     "window_size": 15,         # scans (~1.5 s at the VLP-16's ~9.9 Hz)
@@ -153,6 +173,11 @@ class RowConfidence:
         self.side_combine = str(self._get("side_combine")).lower()
         self.one_side_penalty = float(self._get("one_side_penalty"))
 
+        self.patch_mode = bool(self._get("patch_mode"))
+        self.patch_length_x = float(self._get("patch_length_x"))
+        self.patch_min_points = int(self._get("patch_min_points"))
+        self.patch_combine = str(self._get("patch_combine")).lower()
+
         self.window_size = max(1, int(self._get("window_size")))
         self.require_full_window = bool(self._get("require_full_window"))
         self.temporal_mode = str(self._get("temporal_mode")).lower()
@@ -168,6 +193,10 @@ class RowConfidence:
             self._warn("temporal_mode=%r not recognised, using 'mean'"
                        % self.temporal_mode)
             self.temporal_mode = "mean"
+        if self.patch_combine not in ("mean", "min"):
+            self._warn("patch_combine=%r not recognised, using 'mean'"
+                       % self.patch_combine)
+            self.patch_combine = "mean"
 
         self._window = deque(maxlen=self.window_size)
         # Filled in by every score() call; handy for logging / debugging.
@@ -238,10 +267,18 @@ class RowConfidence:
         if self.side_split:
             left = roi[roi[:, 1] > 0.0]
             right = roi[roi[:, 1] < 0.0]
-            lin_l, ev_l = self._linearity(left)
-            lin_r, ev_r = self._linearity(right)
-            ok_l = left.shape[0] >= self.min_points_per_side
-            ok_r = right.shape[0] >= self.min_points_per_side
+
+            if self.patch_mode:
+                lin_l, n_patch_l = self._patch_linearity(left)
+                lin_r, n_patch_r = self._patch_linearity(right)
+                ok_l = n_patch_l > 0
+                ok_r = n_patch_r > 0
+                ev_l = ev_r = None  # patches each have their own eigenvalues
+            else:
+                lin_l, ev_l = self._linearity(left)
+                lin_r, ev_r = self._linearity(right)
+                ok_l = left.shape[0] >= self.min_points_per_side
+                ok_r = right.shape[0] >= self.min_points_per_side
 
             if ok_l and ok_r:
                 if self.side_combine == "min":
@@ -262,7 +299,10 @@ class RowConfidence:
                 "eig_left": ev_l, "eig_right": ev_r,
             })
         else:
-            if roi.shape[0] >= self.min_points:
+            if self.patch_mode:
+                conf, n_patch = self._patch_linearity(roi)
+                ev = None
+            elif roi.shape[0] >= self.min_points:
                 conf, ev = self._linearity(roi)
             else:
                 conf, ev = 0.0, (0.0, 0.0)
@@ -363,6 +403,44 @@ class RowConfidence:
             return 0.0, (l_min, l_max)
         lin = 1.0 - (l_min / l_max)
         return float(np.clip(lin, 0.0, 1.0)), (l_min, l_max)
+
+    def _patch_linearity(self, pts):
+        """Linearity averaged over adjacent ~square patches along x, instead
+        of one PCA over the whole elongated ROI strip. See the GOTCHA section
+        in the module docstring: pooling a long, thin strip into a single
+        covariance matrix biases linearity upward for pure noise, purely from
+        the strip's own aspect ratio. Scoring narrow patches close to 1:1
+        removes that bias — a real row stays linear at any patch length,
+        uniform scatter does not.
+
+        Returns (combined linearity in [0, 1], number of qualifying patches).
+        A patch "qualifies" when it has at least patch_min_points; patches
+        below that are skipped rather than scored as 0, so one sparse patch
+        at the far end of the strip doesn't drag down an otherwise-clean row.
+        """
+        if pts.shape[0] == 0:
+            return 0.0, 0
+        x_lo = float(np.min(pts[:, 0]))
+        x_hi = float(np.max(pts[:, 0]))
+        span = x_hi - x_lo
+        length = self.patch_length_x if self.patch_length_x > 0 else max(span, _EPS)
+        n_patches = max(1, int(np.ceil(span / length))) if span > 0 else 1
+
+        scores = []
+        for i in range(n_patches):
+            lo = x_lo + i * length
+            hi = x_hi if i == n_patches - 1 else lo + length
+            in_patch = (pts[:, 0] >= lo) & (pts[:, 0] <= hi)
+            patch_pts = pts[in_patch]
+            if patch_pts.shape[0] >= self.patch_min_points:
+                lin, _ev = self._linearity(patch_pts)
+                scores.append(lin)
+
+        if not scores:
+            return 0.0, 0
+        if self.patch_combine == "min":
+            return float(min(scores)), len(scores)
+        return float(np.mean(scores)), len(scores)
 
 
 # --- Diagnostic node --------------------------------------------------------

@@ -39,6 +39,17 @@ side_split: true          # score a left cluster and a right cluster separately
 side_combine: "mean"      # "mean" = average the two sides; "min" = stricter gate
 one_side_penalty: 0.7     # confidence multiplier when only one row is visible
 
+# --- Patch-based scoring (fix for the ROI aspect-ratio bug, diagnosed
+# 2026-09-19 — see the GOTCHA section in row_confidence.py). Off by default:
+# confirmed offline (test_row_confidence.py) but NOT yet re-tested live on the
+# robot. Turn on for the next hallway test with an override before flipping
+# this default:
+#   rosrun husky_custom_sim row_confidence.py _row_confidence/patch_mode:=true
+patch_mode: false
+patch_length_x: 0.70      # m — matches roi_y_abs_max so patches are ~square
+patch_min_points: 5       # points required inside a patch to score it
+patch_combine: "mean"     # "mean" or "min" across qualifying patches
+
 # --- Temporal smoothing --------------------------------------------------
 window_size: 15             # scans in the rolling window (~1.5 s at ~9.9 Hz).
                             # Peer running the same VLP-16 on row crops requires
