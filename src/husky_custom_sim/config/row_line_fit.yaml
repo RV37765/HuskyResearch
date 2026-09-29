@@ -1,0 +1,66 @@
+# row_line_fit.yaml — parameters for row_line_fit.py (k-means/DBSCAN + RANSAC
+# row-line model). See scripts/row_line_fit.py for the full rationale.
+#
+# Unlike row_confidence.py, RowLineFit does NOT read the ROS param server
+# itself (it's deliberately rospy-free so its offline tests need nothing but
+# plain Python — see the module docstring). row_line_fit_node.py reads these
+# under the "row_line_fit" sub-namespace and passes them in as a plain dict:
+#
+#   <node pkg="husky_custom_sim" type="row_line_fit_node.py" name="row_line_fit" output="screen">
+#     <rosparam file="$(find husky_custom_sim)/config/row_line_fit.yaml"
+#               command="load" ns="row_line_fit"/>
+#     <param name="cloud_topic" value="/velodyne_points"/>
+#     <param name="odom_topic" value="/odometry/filtered"/>
+#   </node>
+
+# --- Canopy height band (sensor/base_link frame, z up) -----------------------
+# Cotton grows through the season -- must be retunable without a code change.
+# Same starting values as row_confidence.py's z_min/z_max.
+z_min: 0.05             # m
+z_max: 0.70             # m
+
+# --- Forward-facing ROI (sensor frame: x = forward, y = left) ---------------
+# Wider than row_confidence.py's since clustering -- not a hard ROI wall --
+# does the actual row separation; this box only excludes points too close to
+# trust or too far to be useful.
+roi_x_min: 0.3          # m
+roi_x_max: 5.0          # m
+roi_y_abs_max: 1.2      # m
+
+# --- Clustering (splits the canopy slice into left/right row candidates) ----
+min_points_for_cluster: 12
+kmeans_iters: 25
+kmeans_restarts: 4       # random restarts; keep the lowest-inertia VALID candidate
+
+# "kmeans" is what the 2026-09-24 offline validation (9/9, then 11/11 tests)
+# ran against. "dbscan" is a candidate refinement found via literature
+# research (2026-09-27, action_plan.md) -- offline-tested but not yet
+# confirmed to be a clear improvement on real field data. Turn on for a test
+# with an override before flipping this default:
+#   rosrun husky_custom_sim row_line_fit_node.py _row_line_fit/cluster_mode:=dbscan
+cluster_mode: "kmeans"
+dbscan_eps: 0.25          # m — neighborhood radius for density clustering
+dbscan_min_samples: 4     # points (incl. itself) required to be a core point
+
+# --- Sanity gates on a candidate left/right split ----------------------------
+# All three found necessary via testing (2026-09-28) -- k-means (and, less
+# often, DBSCAN) can otherwise split ONE row into two fake "rows" that each
+# still pass RANSAC. See the GOTCHA comments in row_line_fit.py for the full
+# story on each.
+min_cluster_separation_y: 0.3   # m — reject two clusters too close together in y
+max_cluster_y_spread: 0.12      # m — reject a cluster that's really a blend of both rows
+min_cluster_x_coverage: 0.6     # fraction of the ROI/slice x-range each cluster must span
+
+# --- Temporal accumulation ---------------------------------------------------
+window_size: 15          # scans (~1.5s at ~9.9Hz) — matches row_confidence.py
+
+# --- RANSAC line fit ----------------------------------------------------------
+ransac_iters: 100
+ransac_inlier_thresh: 0.08      # m — perpendicular distance to count as inlier
+ransac_min_inlier_frac: 0.6     # fraction of buffered centroids that must agree
+min_fit_points: 4               # centroids needed (after staleness filtering) to fit
+
+# --- One-side fallback for centerline_error() --------------------------------
+# Half the expected row spacing, used to estimate a centerline when only one
+# side has a valid fit. Cotton row spacing ~0.9m -> rows sit ~0.45m off center.
+row_half_width: 0.45
