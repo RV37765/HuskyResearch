@@ -509,14 +509,31 @@ class RowLineFit:
 
         Returns a dict: valid, point (a point on the line), direction (unit
         vector), inlier_frac, residual_rms, n.
+
+        GOTCHA (found via live testing, 2026-10-08): with n this small --
+        at most window_size, typically ~15 -- there are only n*(n-1)/2
+        possible point pairs (105 at n=15). Randomly sampling ransac_iters
+        (100) of those is ALMOST exhaustive but not quite, and which ~100
+        of the ~105 get drawn can differ between calls on the exact same
+        underlying data. That let the "winning" consensus set -- and
+        therefore the fitted direction -- flicker between calls even when
+        nothing about the data had changed, which live testing showed as
+        the row direction swinging wildly tick to tick. Below n<=20, check
+        every pair instead: barely more expensive than 100 random draws,
+        and it makes the result a deterministic function of the data,
+        removing sampling luck as a source of instability entirely.
         """
         n = pts.shape[0]
         if n < self.min_fit_points:
             return {"valid": False, "reason": "too few points", "n": n}
 
+        if n <= 20:
+            pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
+        else:
+            pairs = [tuple(self._rng.choice(n, size=2, replace=False)) for _ in range(self.ransac_iters)]
+
         best = None
-        for _ in range(self.ransac_iters):
-            i, j = self._rng.choice(n, size=2, replace=False)
+        for i, j in pairs:
             p0, p1 = pts[i], pts[j]
             d = p1 - p0
             norm = np.linalg.norm(d)
