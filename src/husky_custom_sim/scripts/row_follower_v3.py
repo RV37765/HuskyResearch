@@ -54,46 +54,68 @@ test_row_follower_v3.py.
 
 STEERING
 --------
-angular = -(K_LATERAL * cross_track + K_HEADING * heading_error), clipped.
-Both gains are BEST-GUESS starting points -- no field data exists yet to
-tune them against. K_LATERAL matches row_follower_v2's ANGULAR_GAIN since
-cross_track is the same kind of meters-scale error; K_HEADING is a fresh
-guess for how hard to correct a given heading error. Expect to retune both
-from the very first hallway run.
+angular = -(k_lateral * cross_track + k_heading * heading_error), clipped to
++/-max_angular -- implemented in row_follower_state.steering_command(). Both
+errors are "robot relative to the row" (see centerline_error), so both terms
+are negative feedback. Gains are ROS params (~k_lateral, ~k_heading,
+~max_angular), defaulting to the 2026-10-08 live-tuned values.
+
+FRAMES
+------
+Points are transformed from the cloud's frame into ~target_frame (default
+base_link) via TF before RowLineFit sees them -- the VLP-16 is mounted
+upside-down, so raw sensor-frame "left" can be the robot's right. See
+frame_utils.py. If the transform can't be looked up, this node does not drive.
+That also means z_min/z_max are heights above base_link (~0.13 m above
+ground), not distances relative to the sensor.
 
 SAFETY: this node WILL drive the robot once centerline_error() starts
 returning values. Have the PS4 dead-man's switch (L1 + left stick) ready
 before running this on real hardware -- same rule as row_follower_v2.py.
 
-Run standalone:
-    roslaunch husky_custom_sim husky_real_row_map.launch   (no move_base)
-    rosrun husky_custom_sim row_follower_v3.py
+Run it through the launch file, NOT plain rosrun:
+    roslaunch husky_custom_sim row_follower_v3.launch env:=hallway
 
-row_line_fit.py loads no ROS params itself (deliberately rospy-free -- see
-its module docstring); this node reads config/row_line_fit.yaml under the
-"row_line_fit" namespace the same way row_line_fit_node.py does.
+row_line_fit.py loads no ROS params itself (deliberately rospy-free). This
+node reads them from its private ~row_line_fit namespace -- and plain
+`rosrun` loads NOTHING into that namespace, silently falling back to the
+code DEFAULTS (cotton values). That's how the 2026-10-08 hallway ROI fix got
+dropped on 2026-10-22. The launch file loads config/row_line_fit.yaml plus an
+environment overlay (row_line_fit_<env>.yaml) so that can't happen again.
 """
 
 import math
+import time
 
 import numpy as np
 import rospy
-import sensor_msgs.point_cloud2 as pc2
+import tf2_ros
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 
+from frame_utils import apply_rigid, cloud_xyz, describe, rigid_from_transform_msg
 from row_follower_state import (
-    STATE_ACQUIRE, STATE_CREEPING, STATE_FOLLOWING, STATE_ROW_END, step_state,
+    STATE_ACQUIRE, STATE_CREEPING, STATE_FOLLOWING, STATE_ROW_END, apply_baseline_gate, step_state, steering_command,
 )
 from row_line_fit import DEFAULTS, RowLineFit
 
 # --- Tuning parameters ---
 FORWARD_SPEED = 0.20    # m/s -- matches row_follower_v2's full-speed value
 CREEP_SPEED = 0.05      # m/s -- matches row_follower_v2's creep value
-K_LATERAL = 1.2         # best guess: matches row_follower_v2's ANGULAR_GAIN (same units, meters of error)
-K_HEADING = 1.5         # best guess -- no field data yet to tune against
-MAX_ANGULAR = 0.4
+
+# Steering gains are ROS params (~k_lateral, ~k_heading, ~max_angular) so they
+# can be changed per run on the command line instead of sed-editing this file
+# on the robot -- that's how the live-tuned values ended up uncommitted and
+# easy to lose. These defaults ARE those live-tuned values (2026-10-08). They
+# were chosen while the heading-sign bug (fixed 2026-10-28, see
+# centerline_error) was still destabilizing the loop, so they're probably more
+# conservative than the fixed controller needs -- retune upward deliberately,
+# one run at a time. The closed-loop sim converges with both these and the
+# old 1.2/1.5/0.4 defaults once the sign is fixed.
+DEFAULT_K_LATERAL = 0.3
+DEFAULT_K_HEADING = 0.3
+DEFAULT_MAX_ANGULAR = 0.08
 
 
 def _yaw_from_quaternion(q):
@@ -110,13 +132,28 @@ class RowFollowerV3:
     def __init__(self):
         rospy.init_node("row_follower_v3")
 
-        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.cloud_topic = rospy.get_param("~cloud_topic", "/velodyne_points")
         self.odom_topic = rospy.get_param("~odom_topic", "/odometry/filtered")
+        self.k_lateral = float(rospy.get_param("~k_lateral", DEFAULT_K_LATERAL))
+        self.k_heading = float(rospy.get_param("~k_heading", DEFAULT_K_HEADING))
+        self.max_angular = float(rospy.get_param("~max_angular", DEFAULT_MAX_ANGULAR))
+        self._proc_ms_ema = None
 
-        self.cloud_sub = rospy.Subscriber(self.cloud_topic, PointCloud2, self._on_cloud, queue_size=1)
-        self.odom_sub = rospy.Subscriber(self.odom_topic, Odometry, self._on_odom, queue_size=1)
+        # Points are moved into target_frame (REP-103: x fwd, y LEFT, z up)
+        # before RowLineFit sees them -- see frame_utils.py for why. Empty
+        # string = legacy raw-sensor-frame behavior; only for comparison runs.
+        self.target_frame = rospy.get_param("~target_frame", "base_link")
+        self._sensor_tf = None
+        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
 
+        # Everything the callbacks below touch must exist BEFORE the
+        # subscribers are created -- a subscriber can start firing its
+        # callback on a background thread as soon as it's constructed,
+        # concurrently with the rest of this __init__ still running. See
+        # the module-level note in row_follower_v3's history: this ordering
+        # fixes a real (if narrow) startup race where an early message
+        # crashed _on_cloud() on self.rlf before this line had run.
         self.pose = (0.0, 0.0, 0.0)
         self._have_odom = False
         self.last_angular = 0.0
@@ -125,10 +162,19 @@ class RowFollowerV3:
         self.state = STATE_ACQUIRE
         self.low_conf_streak = 0
 
+        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+        self.cloud_sub = rospy.Subscriber(self.cloud_topic, PointCloud2, self._on_cloud, queue_size=1)
+        self.odom_sub = rospy.Subscriber(self.odom_topic, Odometry, self._on_odom, queue_size=1)
+
         rospy.loginfo("Row follower v3 started. State: %s", self.state)
         rospy.loginfo(
-            "Speed: %.2f m/s | Creep: %.2f m/s | K_lateral: %.2f | K_heading: %.2f (best-guess, untuned)",
-            FORWARD_SPEED, CREEP_SPEED, K_LATERAL, K_HEADING,
+            "Speed: %.2f m/s | Creep: %.2f m/s | K_lateral: %.2f | K_heading: %.2f | max_angular: %.3f",
+            FORWARD_SPEED, CREEP_SPEED, self.k_lateral, self.k_heading, self.max_angular,
+        )
+        rospy.loginfo(
+            "row_line_fit: roi_y_abs_max=%.2f row_half_width=%.2f z=[%.2f, %.2f] cluster_mode=%s",
+            self.rlf.roi_y_abs_max, self.rlf.row_half_width, self.rlf.z_min, self.rlf.z_max,
+            self.rlf.cluster_mode,
         )
         rospy.logwarn("SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.")
 
@@ -138,14 +184,12 @@ class RowFollowerV3:
         self._have_odom = True
 
     def compute_steering(self, err):
-        """err is centerline_error()'s dict, or None. Falls back to a
-        damped last-known correction when nothing's available -- identical
-        fallback pattern to row_follower.py's coasting / v2's compute_steering."""
-        if err is None:
-            return self.last_angular * 0.5
-        angular = -(K_LATERAL * err["cross_track"] + K_HEADING * err["heading_error"])
-        angular = max(-MAX_ANGULAR, min(MAX_ANGULAR, angular))
-        self.last_angular = angular
+        """Thin wrapper over row_follower_state.steering_command() -- the law
+        itself (and the 2026-10-22 decay fix) lives there so it's testable
+        without ROS and shared with replay_bag_log.py."""
+        angular, self.last_angular = steering_command(
+            err, self.last_angular, self.k_lateral, self.k_heading, self.max_angular,
+        )
         return angular
 
     def _on_cloud(self, msg):
@@ -153,13 +197,31 @@ class RowFollowerV3:
             rospy.logwarn_throttle(5.0, "row_follower_v3: waiting for first %s message", self.odom_topic)
             return
 
-        raw = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
-        pts = np.array(raw, dtype=float) if raw else np.empty((0, 3))
+        if self.target_frame and self._sensor_tf is None:
+            try:
+                tf_msg = self._tf_buffer.lookup_transform(
+                    self.target_frame, msg.header.frame_id, rospy.Time(0), rospy.Duration(0.1))
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as exc:
+                # Fail safe: never steer on points whose frame we can't verify.
+                # Not publishing lets twist_mux's 0.5s timeout stop the robot.
+                rospy.logwarn_throttle(
+                    2.0, "row_follower_v3: no TF %s <- %s yet (%s) -- not driving",
+                    self.target_frame, msg.header.frame_id, exc)
+                return
+            self._sensor_tf = rigid_from_transform_msg(tf_msg.transform)
+            rospy.loginfo("Sensor transform %s <- %s: %s",
+                          self.target_frame, msg.header.frame_id, describe(*self._sensor_tf))
 
-        self.rlf.update(pts, pose=self.pose)
+        t0 = time.monotonic()
+        pts = cloud_xyz(msg)
+        if self._sensor_tf is not None:
+            pts = apply_rigid(pts, *self._sensor_tf)
+
+        dbg = self.rlf.update(pts, pose=self.pose)
         any_valid = self.rlf.any_valid()
-        both_valid = self.rlf.both_valid()
-        err = self.rlf.centerline_error(self.pose)
+        err, both_valid = apply_baseline_gate(
+            self.rlf.centerline_error(self.pose), self.rlf.both_valid(), self.rlf.baseline_ok())
 
         angular = self.compute_steering(err)
         prev_state = self.state
@@ -186,10 +248,18 @@ class RowFollowerV3:
                 0.5, "CREEPING: no valid fit, streak %d/%d", self.low_conf_streak, self.rlf.window_size,
             )
 
+        # Per-scan budget at ~9.9Hz is ~101ms. If proc approaches that, the
+        # Python point-cloud conversion (not RowLineFit) is the likely cost.
+        proc_ms = (time.monotonic() - t0) * 1000.0
+        self._proc_ms_ema = proc_ms if self._proc_ms_ema is None else 0.9 * self._proc_ms_ema + 0.1 * proc_ms
+
         err_str = "xt=%.3f hd=%.3f%s" % (
             err["cross_track"], err["heading_error"], " (est)" if err["estimated"] else "",
         ) if err is not None else "none"
-        rospy.loginfo_throttle(1.0, "[%s] err=%s angular=%.3f", self.state, err_str, angular)
+        rospy.loginfo_throttle(
+            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | proc=%.0fms",
+            self.state, err_str, angular, dbg["status"], dbg["n_canopy"], self._proc_ms_ema,
+        )
 
         self.cmd_pub.publish(twist)
 

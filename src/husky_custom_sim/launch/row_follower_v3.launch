@@ -1,0 +1,47 @@
+<launch>
+  <!--
+    row_follower_v3 with its configuration actually loaded.
+
+    Plain `rosrun husky_custom_sim row_follower_v3.py` loads NOTHING into the
+    node's ~row_line_fit namespace, so it silently runs on the code DEFAULTS
+    (cotton values). That is how the 2026-10-08 hallway ROI fix was dropped on
+    2026-10-22. This file always loads, in order:
+      1. config/row_line_fit.yaml          shared base values
+      2. config/row_line_fit_ENV.yaml      environment overlay (ENV = hallway or field)
+      3. any command-line overrides below
+
+    Needs only the robot's system bringup (VLP-16 driver, EKF, twist_mux).
+    It does NOT need slam_toolbox or husky_real_row_map.launch.
+
+    Usage:
+      roslaunch husky_custom_sim row_follower_v3.launch
+      roslaunch husky_custom_sim row_follower_v3.launch row_half_width:=1.4 roi_y_abs_max:=2.5
+      roslaunch husky_custom_sim row_follower_v3.launch k_lateral:=0.6 k_heading:=0.6 max_angular:=0.15
+      roslaunch husky_custom_sim row_follower_v3.launch env:=field     (needs row_line_fit_field.yaml, Stage 2)
+
+    SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.
+  -->
+  <arg name="env" default="hallway"/>
+  <arg name="k_lateral" default="0.3"/>
+  <arg name="k_heading" default="0.3"/>
+  <arg name="max_angular" default="0.08"/>
+  <arg name="target_frame" default="base_link"/>
+  <!-- Optional per-run overrides for values that change between sections / environments -->
+  <arg name="roi_y_abs_max" default=""/>
+  <arg name="row_half_width" default=""/>
+  <arg name="z_min" default=""/>
+  <arg name="z_max" default=""/>
+
+  <node pkg="husky_custom_sim" type="row_follower_v3.py" name="row_follower_v3" output="screen">
+    <rosparam file="$(find husky_custom_sim)/config/row_line_fit.yaml" command="load" ns="row_line_fit"/>
+    <rosparam file="$(find husky_custom_sim)/config/row_line_fit_$(arg env).yaml" command="load" ns="row_line_fit"/>
+    <param if="$(eval arg('roi_y_abs_max') != '')" name="row_line_fit/roi_y_abs_max" type="double" value="$(arg roi_y_abs_max)"/>
+    <param if="$(eval arg('row_half_width') != '')" name="row_line_fit/row_half_width" type="double" value="$(arg row_half_width)"/>
+    <param if="$(eval arg('z_min') != '')" name="row_line_fit/z_min" type="double" value="$(arg z_min)"/>
+    <param if="$(eval arg('z_max') != '')" name="row_line_fit/z_max" type="double" value="$(arg z_max)"/>
+    <param name="k_lateral" type="double" value="$(arg k_lateral)"/>
+    <param name="k_heading" type="double" value="$(arg k_heading)"/>
+    <param name="max_angular" type="double" value="$(arg max_angular)"/>
+    <param name="target_frame" value="$(arg target_frame)"/>
+  </node>
+</launch>

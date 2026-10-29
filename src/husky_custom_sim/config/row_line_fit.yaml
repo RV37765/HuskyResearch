@@ -13,9 +13,16 @@
 #     <param name="odom_topic" value="/odometry/filtered"/>
 #   </node>
 
-# --- Canopy height band (sensor/base_link frame, z up) -----------------------
+# Environment-specific values live in overlays loaded on top of this file by
+# launch/row_follower_v3.launch: row_line_fit_hallway.yaml (and, from Stage 2,
+# row_line_fit_field.yaml). Plain `rosrun` loads none of this -- use the launch file.
+
+# --- Canopy height band (base_link frame, z up) -------------------------------
 # Cotton grows through the season -- must be retunable without a code change.
-# Same starting values as row_confidence.py's z_min/z_max.
+# Same starting values as row_confidence.py's z_min/z_max. As of 2026-10-28
+# row_follower_v3 transforms points into base_link before slicing, so these
+# really are heights above base_link (~0.13 m above ground). Before that the
+# raw upside-down sensor frame made them distances BELOW the sensor.
 z_min: 0.05             # m
 z_max: 0.70             # m
 

@@ -49,3 +49,47 @@ def step_state(state, any_valid, both_valid, low_conf_streak, window_size):
         return STATE_CREEPING, streak
 
     return STATE_ROW_END, low_conf_streak
+
+
+def steering_command(err, last_angular, k_lateral, k_heading, max_angular):
+    """Pure steering law -- returns (angular, new_last_angular).
+
+    err is RowLineFit.centerline_error()'s dict, or None when neither side
+    has a valid fit. Both errors share one convention ("robot relative to
+    the row", see centerline_error's docstring), so the law below is
+    negative feedback on BOTH terms.
+
+    When blind, decay the last command toward zero instead of holding it.
+    The decayed value must be stored back -- returning last_angular * 0.5
+    without reassigning it held a constant nonzero turn forever (found in the
+    field 2026-10-22: a long blind stretch kept the robot slowly turning
+    into a wall).
+
+    Lives here (not in row_follower_v3.py) for the same reason step_state()
+    does: so it can be tested without ROS, and so replay_bag_log.py runs the
+    identical law instead of a hand-copied formula that could drift.
+    """
+    if err is None:
+        decayed = last_angular * 0.5
+        return decayed, decayed
+    angular = -(k_lateral * err["cross_track"] + k_heading * err["heading_error"])
+    angular = max(-max_angular, min(max_angular, angular))
+    return angular, angular
+
+
+def apply_baseline_gate(err, both_valid, baseline_ok):
+    """Don't act on a line DIRECTION that has no travel baseline behind it.
+
+    With the robot parked or just starting, the accumulated centroids all sit
+    at one spot, so the fitted heading (and the cross-track measured against
+    it) is noise -- 43 of 72 large cross-track spikes in the 2026-10-28 run
+    were this. Returns (err_for_steering, both_valid_for_state):
+      * err is dropped (-> steering decays toward zero) until baseline_ok;
+      * both_valid is withheld so ACQUIRE can't promote to FOLLOWING on a
+        direction that isn't trustworthy yet.
+    any_valid (the row-end signal) is deliberately NOT gated: a robot that is
+    paused still sees its walls, and must not drift toward a false ROW_END.
+    """
+    if baseline_ok:
+        return err, both_valid
+    return None, False

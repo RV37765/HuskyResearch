@@ -18,6 +18,7 @@ Two layers, same spirit as test_row_line_fit.py:
 import numpy as np
 
 from row_follower_state import (
+    apply_baseline_gate, steering_command,
     STATE_ACQUIRE, STATE_CREEPING, STATE_FOLLOWING, STATE_ROW_END, step_state,
 )
 from row_line_fit import RowLineFit
@@ -141,6 +142,21 @@ check("integrated: reaches ROW_END after the hallway ends (within 2*window_size+
 check("integrated: ROW_END wasn't reached instantly (real dwell, not a hair-trigger)",
       row_end_at is not None and row_end_at >= rlf.window_size - 1,
       "reached at #%s, window_size=%d" % (row_end_at, rlf.window_size))
+
+# --- baseline gate + steering law (2026-10-28) ---
+_e = {"cross_track": 0.1, "heading_error": 0.05, "estimated": False}
+check("baseline gate passes err and both_valid through once baseline is ok",
+      apply_baseline_gate(_e, True, True) == (_e, True))
+check("baseline gate drops err and withholds both_valid while the robot has not moved",
+      apply_baseline_gate(_e, True, False) == (None, False))
+ang, last = steering_command(_e, 0.0, 0.3, 0.3, 0.08)
+check("steering is negative feedback on both terms (robot left + pointing left -> turn right)", ang < 0, "ang=%.4f" % ang)
+ang, last = steering_command({"cross_track": 5.0, "heading_error": 5.0, "estimated": False}, 0.0, 0.3, 0.3, 0.08)
+check("steering is clipped to max_angular", abs(ang) == 0.08 and last == ang, "ang=%.4f" % ang)
+ang, last = steering_command(None, -0.08, 0.3, 0.3, 0.08)
+ang2, last2 = steering_command(None, last, 0.3, 0.3, 0.08)
+check("blind fallback decays toward zero and STORES the decayed value (-0.08 -> -0.04 -> -0.02)",
+      abs(ang + 0.04) < 1e-9 and abs(ang2 + 0.02) < 1e-9 and last2 == ang2, "ang=%.4f ang2=%.4f" % (ang, ang2))
 
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)

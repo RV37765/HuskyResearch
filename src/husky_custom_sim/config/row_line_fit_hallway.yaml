@@ -1,0 +1,32 @@
+# row_line_fit_hallway.yaml -- HALLWAY-ONLY overlay, loaded on top of
+# row_line_fit.yaml by row_follower_v3.launch (env:=hallway).
+#
+# These numbers describe a hallway, not a crop row. Do NOT carry them into the
+# field. Hallway testing validates the MECHANISM (does clustering split two
+# sides, does RANSAC fit, does the state machine transition); it does not
+# validate the NUMBERS for the field -- tuning them here and reusing them
+# outside is exactly the overfitting trap (action_plan.md, Row Detection Focus).
+# Field values get their own overlay, row_line_fit_field.yaml, built in Stage 2
+# from reasoning + measurement.
+
+# Walls sit ~1.1-1.25 m from center (measured 2026-10-08). 2.0 keeps both
+# inside the ROI with margin for an off-center or yawed robot. The cotton
+# default (1.2) put the walls right at the ROI edge -- that's the 2026-10-08
+# "never leaves ACQUIRE" bug, and it came back 2026-10-22 when the runtime
+# override was silently dropped. Override per section if a stretch is wider:
+#   roslaunch husky_custom_sim row_follower_v3.launch roi_y_abs_max:=2.5
+roi_y_abs_max: 2.0
+
+# Half the wall-to-wall spacing. Used ONLY by the one-sided fallback (a single
+# wall visible): the centerline is estimated this far inside that wall. With
+# the cotton default (0.45) the robot believed the center was ~0.7 m closer to
+# the visible wall than it really was -- and steered toward it. Re-measure per
+# hallway section with: rosrun husky_custom_sim measure_corridor.py
+row_half_width: 1.15
+
+# Heights above base_link (~0.13 m above ground) -- points are transformed into
+# base_link before slicing as of 2026-10-28 (see frame_utils.py). Walls run
+# floor to ceiling, so a wide band is safe and keeps many laser rings in view
+# whatever the exact sensor mount height. Excludes the floor.
+z_min: 0.20
+z_max: 1.20
