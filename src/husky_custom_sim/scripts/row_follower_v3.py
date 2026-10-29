@@ -93,6 +93,7 @@ import tf2_ros
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Bool
 
 from frame_utils import apply_rigid, cloud_xyz, describe, rigid_from_transform_msg
 from row_follower_state import (
@@ -165,6 +166,7 @@ class RowFollowerV3:
         self.pose = (0.0, 0.0, 0.0)
         self._have_odom = False
         self.last_angular = 0.0
+        self.paused = False
 
         self.rlf = RowLineFit(overrides=_load_overrides())
         self.state = STATE_ACQUIRE
@@ -173,6 +175,7 @@ class RowFollowerV3:
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.cloud_sub = rospy.Subscriber(self.cloud_topic, PointCloud2, self._on_cloud, queue_size=1)
         self.odom_sub = rospy.Subscriber(self.odom_topic, Odometry, self._on_odom, queue_size=1)
+        self.pause_sub = rospy.Subscriber("~pause", Bool, self._on_pause, queue_size=1)
 
         rospy.loginfo("Row follower v3 started. State: %s", self.state)
         rospy.loginfo(
@@ -187,12 +190,23 @@ class RowFollowerV3:
         rospy.loginfo("Obstacle stop: %s (box x=[%.1f, %.1f] |y|<=%.2f, min_points=%d)",
                       "ON" if self.obstacle_stop else "OFF", self.obstacle_cfg["x_min"],
                       self.obstacle_cfg["x_max"], self.obstacle_cfg["half_width"], self.obstacle_cfg["min_points"])
+        rospy.loginfo("Pause: rostopic pub -1 %s std_msgs/Bool \"data: true\" (false resumes)",
+                      rospy.resolve_name("~pause"))
         rospy.logwarn("SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.")
 
     def _on_odom(self, msg):
         p = msg.pose.pose.position
         self.pose = (p.x, p.y, _yaw_from_quaternion(msg.pose.pose.orientation))
         self._have_odom = True
+
+    def _on_pause(self, msg):
+        """Hands-free hold, e.g. while taking tape-measure ground truth. The
+        PS4 override only holds while L1 stays pressed, which leaves no hands
+        for the tape. Same effect as the obstacle hold: motion is zeroed, the
+        detector and state machine keep running. Not a safety device -- the
+        dead-man's switch and the e-stop are."""
+        self.paused = bool(msg.data)
+        rospy.logwarn("row_follower_v3: %s", "PAUSED -- holding" if self.paused else "RESUMED")
 
     def compute_steering(self, err):
         """Thin wrapper over row_follower_state.steering_command() -- the law
@@ -264,6 +278,10 @@ class RowFollowerV3:
             twist.angular.z = 0.0
             rospy.logwarn_throttle(1.0, "OBSTACLE in path (%d points) -- holding", path_pts)
 
+        if self.paused:
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+
         if self.state == STATE_CREEPING:
             rospy.loginfo_throttle(
                 0.5, "CREEPING: no valid fit, streak %d/%d", self.low_conf_streak, self.rlf.window_size,
@@ -278,9 +296,9 @@ class RowFollowerV3:
             err["cross_track"], err["heading_error"], " (est)" if err["estimated"] else "",
         ) if err is not None else "none"
         rospy.loginfo_throttle(
-            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | path=%d%s | proc=%.0fms",
+            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | path=%d%s%s | proc=%.0fms",
             self.state, err_str, angular, dbg["status"], dbg["n_canopy"], path_pts,
-            " BLOCKED" if blocked else "", self._proc_ms_ema,
+            " BLOCKED" if blocked else "", " PAUSED" if self.paused else "", self._proc_ms_ema,
         )
 
         self.cmd_pub.publish(twist)
