@@ -158,6 +158,25 @@ ang2, last2 = steering_command(None, last, 0.3, 0.3, 0.08)
 check("blind fallback decays toward zero and STORES the decayed value (-0.08 -> -0.04 -> -0.02)",
       abs(ang + 0.04) < 1e-9 and abs(ang2 + 0.02) < 1e-9 and last2 == ang2, "ang=%.4f ang2=%.4f" % (ang, ang2))
 
+# --- forward obstacle stop (safety.py, 2026-10-28) ---
+import safety as _safety
+_c = _safety.DEFAULTS
+_ahead = np.column_stack((np.full(200, 1.0), np.linspace(-0.15, 0.15, 200), np.linspace(0.1, 0.9, 200)))
+_walls = np.column_stack((np.linspace(0.3, 5.0, 400), np.r_[np.full(200, 1.2), np.full(200, -1.2)], np.full(400, 0.5)))
+check("points_in_path counts a person-sized object 1 m ahead",
+      _safety.points_in_path(_ahead, _c["x_min"], _c["x_max"], _c["half_width"], _c["z_min"], _c["z_max"]) == 200)
+check("points_in_path ignores hallway walls 1.2 m to the side",
+      _safety.points_in_path(_walls, _c["x_min"], _c["x_max"], _c["half_width"], _c["z_min"], _c["z_max"]) == 0)
+_g = _safety.ObstacleGate(min_points=20, trigger_scans=3, clear_scans=10)
+_seq = [_g.update(n) for n in (200, 200, 200, 200)]
+check("gate blocks only after trigger_scans consecutive hits", _seq == [False, False, True, True], "seq=%s" % _seq)
+_seq = [_g.update(0) for _ in range(10)]
+check("gate stays blocked until clear_scans consecutive clear scans", _seq[:9] == [True] * 9 and _seq[9] is False,
+      "seq=%s" % _seq)
+_g2 = _safety.ObstacleGate(min_points=20, trigger_scans=3, clear_scans=10)
+_seq = [_g2.update(n) for n in (200, 0, 200, 0, 200, 0)]
+check("isolated single-scan hits never block (debounce)", not any(_seq), "seq=%s" % _seq)
+
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)
 print("\n%d/%d checks passed" % (n_pass, len(results)))

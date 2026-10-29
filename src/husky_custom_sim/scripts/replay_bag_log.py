@@ -41,6 +41,7 @@ import yaml
 from frame_utils import apply_rigid, chain_to_target, cloud_xyz, describe, rigid_from_transform_msg
 from row_follower_state import STATE_ACQUIRE, apply_baseline_gate, step_state, steering_command
 from row_line_fit import DEFAULTS, RowLineFit
+import safety
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
 
@@ -113,6 +114,8 @@ def main():
     sensor_rt = None  # resolved on the first cloud, once we know its frame_id
 
     state, streak, last_angular = STATE_ACQUIRE, 0, 0.0
+    sc = safety.DEFAULTS
+    gate = safety.ObstacleGate(sc["min_points"], sc["trigger_scans"], sc["clear_scans"])
     pose, last_odom_stamp = (0.0, 0.0, 0.0), None
     cmd = (float("nan"), float("nan"))
     prev_cloud_t = None
@@ -145,6 +148,8 @@ def main():
         if sensor_rt is not None:
             pts = apply_rigid(pts, *sensor_rt)
 
+        path_pts = safety.points_in_path(pts, sc["x_min"], sc["x_max"], sc["half_width"], sc["z_min"], sc["z_max"])
+        blocked = gate.update(path_pts)
         dbg = rlf.update(pts, pose=pose)
         left_fit, right_fit = rlf.fit_lines()
         any_valid = left_fit["valid"] or right_fit["valid"]
@@ -168,6 +173,7 @@ def main():
             "pose_age_sec": round(pose_age, 4) if pose_age is not None else "",
             "state": state, "state_changed": state != prev_state,
             "clusters": dbg["status"], "n_canopy": dbg["n_canopy"],
+            "path_points": path_pts, "obstacle_blocked": blocked,
             "odom_x": round(pose[0], 3), "odom_y": round(pose[1], 3), "odom_theta_rad": round(pose[2], 4),
             "left_valid": left_fit["valid"], "left_inlier_frac": left_fit.get("inlier_frac", ""),
             "left_n": left_fit.get("n", ""), "left_dir_deg": dir_deg(left_fit),
@@ -199,6 +205,8 @@ def main():
         first = next((r["scan_i"] for r in rows if r["state"] != "ACQUIRE"), None)
         print("first non-ACQUIRE scan: %s | final state: %s" % (first, rows[-1]["state"]))
         changes = [(r["scan_i"], r["state"]) for r in rows if r["state_changed"]]
+        print("obstacle stop would have held the robot on %d scans (max in-path points %d)"
+              % (sum(1 for r in rows if r["obstacle_blocked"]), max(r["path_points"] for r in rows)))
         print("state changes: %s" % changes)
 
 

@@ -99,6 +99,7 @@ from row_follower_state import (
     STATE_ACQUIRE, STATE_CREEPING, STATE_FOLLOWING, STATE_ROW_END, apply_baseline_gate, step_state, steering_command,
 )
 from row_line_fit import DEFAULTS, RowLineFit
+import safety
 
 # --- Tuning parameters ---
 FORWARD_SPEED = 0.20    # m/s -- matches row_follower_v2's full-speed value
@@ -143,6 +144,13 @@ class RowFollowerV3:
         # before RowLineFit sees them -- see frame_utils.py for why. Empty
         # string = legacy raw-sensor-frame behavior; only for comparison runs.
         self.target_frame = rospy.get_param("~target_frame", "base_link")
+
+        # Forward obstacle stop (safety.py): on by default. Calibrated on both
+        # 2026-10-28 hallway runs (zero false triggers in 2,968 scans).
+        self.obstacle_stop = bool(rospy.get_param("~obstacle_stop", True))
+        self.obstacle_cfg = {k: rospy.get_param("~obstacle/%s" % k, v) for k, v in safety.DEFAULTS.items()}
+        self.obstacle_gate = safety.ObstacleGate(
+            self.obstacle_cfg["min_points"], self.obstacle_cfg["trigger_scans"], self.obstacle_cfg["clear_scans"])
         self._sensor_tf = None
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
@@ -176,6 +184,9 @@ class RowFollowerV3:
             self.rlf.roi_y_abs_max, self.rlf.row_half_width, self.rlf.z_min, self.rlf.z_max,
             self.rlf.cluster_mode,
         )
+        rospy.loginfo("Obstacle stop: %s (box x=[%.1f, %.1f] |y|<=%.2f, min_points=%d)",
+                      "ON" if self.obstacle_stop else "OFF", self.obstacle_cfg["x_min"],
+                      self.obstacle_cfg["x_max"], self.obstacle_cfg["half_width"], self.obstacle_cfg["min_points"])
         rospy.logwarn("SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.")
 
     def _on_odom(self, msg):
@@ -218,6 +229,10 @@ class RowFollowerV3:
         if self._sensor_tf is not None:
             pts = apply_rigid(pts, *self._sensor_tf)
 
+        c = self.obstacle_cfg
+        path_pts = safety.points_in_path(pts, c["x_min"], c["x_max"], c["half_width"], c["z_min"], c["z_max"])
+        blocked = self.obstacle_gate.update(path_pts) and self.obstacle_stop
+
         dbg = self.rlf.update(pts, pose=self.pose)
         any_valid = self.rlf.any_valid()
         err, both_valid = apply_baseline_gate(
@@ -243,6 +258,12 @@ class RowFollowerV3:
             twist.angular.z = 0.0
             rospy.loginfo_throttle(2.0, "ROW_END reached -- stopped. Turnaround not yet implemented.")
 
+        if blocked:
+            # Detector and state machine keep running; only motion is held.
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            rospy.logwarn_throttle(1.0, "OBSTACLE in path (%d points) -- holding", path_pts)
+
         if self.state == STATE_CREEPING:
             rospy.loginfo_throttle(
                 0.5, "CREEPING: no valid fit, streak %d/%d", self.low_conf_streak, self.rlf.window_size,
@@ -257,8 +278,9 @@ class RowFollowerV3:
             err["cross_track"], err["heading_error"], " (est)" if err["estimated"] else "",
         ) if err is not None else "none"
         rospy.loginfo_throttle(
-            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | proc=%.0fms",
-            self.state, err_str, angular, dbg["status"], dbg["n_canopy"], self._proc_ms_ema,
+            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | path=%d%s | proc=%.0fms",
+            self.state, err_str, angular, dbg["status"], dbg["n_canopy"], path_pts,
+            " BLOCKED" if blocked else "", self._proc_ms_ema,
         )
 
         self.cmd_pub.publish(twist)
