@@ -227,6 +227,94 @@ for mode in ("kmeans", "dbscan"):
           avg_s < budget_s * 0.5,
           "%.2fms/scan (budget %.1fms)" % (avg_s * 1000, budget_s * 1000))
 
+# --- 10. Yaw invariance: a straight wall at 8 deg yaw must still cluster (2026-10-28) --
+# The spread gate used to measure y-spread in the ROBOT frame, so a perfectly
+# straight wall seen at ~4+ deg yaw looked like a "blend" and blinded the detector.
+import math as _math
+def _wall_scan_yawed(yaw_deg, n=40):
+    th = _math.radians(yaw_deg); pts = []
+    for wy in (0.9, -0.9):
+        wx = RNG.uniform(-0.5, 5.5, n); wyy = np.full(n, wy) + RNG.normal(0, 0.01, n)
+        rx = _math.cos(-th) * wx - _math.sin(-th) * wyy
+        ry = _math.sin(-th) * wx + _math.cos(-th) * wyy
+        keep = (rx >= 0.3) & (rx <= 5.0)
+        pts.append(np.column_stack((rx[keep], ry[keep], np.full(keep.sum(), Z_MID))))
+    return np.vstack(pts)
+for yaw in (0, 4, 8):
+    rlf = RowLineFit(overrides={"roi_y_abs_max": 2.5}, seed=0)
+    modes = [rlf.update(_wall_scan_yawed(yaw), pose=(0.0, 0.0, _math.radians(yaw)))["status"] for _ in range(10)]
+    check("yaw invariance: straight walls at %d deg yaw still cluster both sides" % yaw,
+          modes.count("both") >= 9, "modes=%s" % sorted(set(modes)))
+
+# --- 11. Sign convention: heading_error is robot-relative-to-row, like cross_track (2026-10-28) --
+rlf = RowLineFit(seed=0)
+for k in range(rlf.window_size):
+    rlf.update(make_scan(0.02 * k, robot_y=0.0), pose=(0.02 * k, 0.0, 0.0))
+th = _math.radians(5.0)   # robot yawed 5 deg LEFT of a row that runs along +x
+err = rlf.centerline_error((0.3, 0.0, th))
+check("heading_error > 0 when the robot points left of the row", err is not None and err["heading_error"] > 0.05,
+      "err=%s" % err)
+err = rlf.centerline_error((0.3, 0.2, 0.0))
+check("cross_track > 0 when the robot is left of the centerline", err is not None and err["cross_track"] > 0.1,
+      "err=%s" % err)
+
+# --- 12. One clean wall + one wall with a protrusion -> one_side, not none (2026-10-28) --
+rlf = RowLineFit(seed=0); modes = []
+for k in range(25):
+    pts = make_scan(0.02 * k, robot_y=0.0)
+    obst = np.column_stack((RNG.uniform(0.5, 1.5, 40), np.full(40, -0.35) + RNG.normal(0, 0.03, 40), np.full(40, Z_MID)))
+    obst2 = np.column_stack((RNG.uniform(2.5, 3.5, 40), np.full(40, -0.30) + RNG.normal(0, 0.03, 40), np.full(40, Z_MID)))
+    modes.append(rlf.update(np.vstack((pts, obst, obst2)), pose=(0.02 * k, 0.0, 0.0))["status"])
+check("clean left wall + cluttered right wall -> detector keeps a usable side",
+      modes[-10:].count("none") <= 2, "last-10 modes=%s" % modes[-10:])
+check("...and the buffer still yields a valid fit on the clean side", rlf.any_valid())
+
+# --- 13. fit cache: three queries per scan share one RANSAC run, results unchanged ---
+rlf = RowLineFit(seed=0)
+for k in range(rlf.window_size):
+    rlf.update(make_scan(0.02 * k), pose=(0.02 * k, 0.0, 0.0))
+a = rlf.fit_lines(); b = rlf.fit_lines()
+check("fit_lines() is cached within a scan (same objects returned)", a is b)
+rlf.update(make_scan(0.4), pose=(0.4, 0.0, 0.0))
+check("fit cache is invalidated by update()", rlf.fit_lines() is not a)
+
+# --- 14. clustering subsample cap keeps both sides at full density (2026-10-28) ---
+rlf = RowLineFit(overrides={"max_cluster_points": 300}, seed=0)
+dense = make_scan(0.0, n_stems=2000)            # ~4000 canopy points >> cap
+modes = [rlf.update(dense, pose=(0.02 * k, 0.0, 0.0))["status"] for k in range(15)]
+check("subsampling a dense scan to the cap still finds both rows", modes.count("both") >= 14, "modes=%s" % sorted(set(modes)))
+
+# --- 15. travel baseline: ~0 when parked, grows with motion (2026-10-28) ---
+rlf = RowLineFit(seed=0)
+for _ in range(15): rlf.update(make_scan(0.0), pose=(0.0, 0.0, 0.0))
+parked = rlf.baseline()
+rlf = RowLineFit(seed=0)
+for k in range(15): rlf.update(make_scan(0.02 * k), pose=(0.02 * k, 0.0, 0.0))
+moving = rlf.baseline()
+check("baseline is tiny while parked and above min_baseline_m after ~0.3 m of travel",
+      parked < rlf.min_baseline_m and moving >= rlf.min_baseline_m, "parked=%.3f moving=%.3f" % (parked, moving))
+
+# --- 16. cloud_xyz equals the pc2 conversion on a synthetic PointCloud2-shaped message ---
+import struct, types
+from frame_utils import cloud_xyz
+_pts = np.array([[1.0, 2.0, 3.0], [np.nan, 0.0, 0.0], [4.5, -1.5, 0.25], [0.0, np.inf, 1.0]], dtype=np.float32)
+_buf = b"".join(struct.pack("<ffff", x, y, z, 7.0) for x, y, z in _pts)     # x,y,z + intensity, point_step 16
+_fields = [types.SimpleNamespace(name=n, offset=o, datatype=7, count=1) for n, o in (("x", 0), ("y", 4), ("z", 8), ("intensity", 12))]
+_msg = types.SimpleNamespace(fields=_fields, point_step=16, width=4, height=1, data=_buf, is_bigendian=False)
+_out = cloud_xyz(_msg)
+check("cloud_xyz keeps finite points and drops NaN/inf rows exactly",
+      _out.shape == (2, 3) and np.allclose(_out, [[1, 2, 3], [4.5, -1.5, 0.25]]), "out=%s" % _out.tolist())
+
+# --- 17. Clean evenly-spread rows must split reliably even when sparse (2026-10-28) ---
+# Legacy Euclidean k-means failed this split in ~48% of scans at 20 pts/side.
+_bad = 0
+for _ in range(200):
+    _rl = RowLineFit(seed=0)
+    if _rl.update(make_scan(0.0, n_stems=20), pose=(0, 0, 0))["status"] != "both":
+        _bad += 1
+check("20 evenly-spread points per side split into two rows in >=98% of scans (legacy: ~52%)",
+      _bad <= 4, "failures=%d/200 (cluster_x_scale=%.2f)" % (_bad, RowLineFit().cluster_x_scale))
+
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)
 print("\n%d/%d checks passed" % (n_pass, len(results)))

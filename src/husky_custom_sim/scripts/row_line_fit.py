@@ -172,6 +172,32 @@ DEFAULTS = {
     # row's points are spread along its entire visible length. Expressed as
     # a fraction of the full canopy slice's x-range this scan.
     "min_cluster_x_coverage": 0.6,
+
+    # Clustering cost cap. A dense wall gives ~6,000+ canopy points per scan and
+    # k-means (4 restarts x up to 25 iterations) dominated the per-scan time
+    # (~77 ms of a 101 ms budget). A 2026-10-28 sweep on real hallway points
+    # showed the detector holds both sides 100% down to ~190 points/scan, so
+    # clustering on a random subsample of at most this many points loses
+    # nothing measurable. Seeded RNG -> deterministic in replay.
+    "max_cluster_points": 1500,
+
+    # k-means distance weighting along x. Rows are long (x) and close together (y),
+    # so plain Euclidean k-means can assign far-end points to the wrong side when the
+    # two sides' mean-x differ (more likely with fewer points). Scaling x down before
+    # clustering makes the split depend on lateral separation. 1.0 = legacy behavior.
+    # Monte Carlo on CLEAN evenly-spread rows (2026-10-28): legacy 1.0 fails the split in
+    # 9% of scans at 150 pts/side, 30% at 50, 48% at 20; 0.25 fails 0% from 20 pts/side up.
+    # Dense hallway walls hid this (their points bunch near the robot, keeping the two
+    # sides' mean-x close); evenly spaced plants down a row are the field case.
+    "cluster_x_scale": 0.25,
+
+    # Minimum distance the accumulated centroids must span before the fitted
+    # line DIRECTION is trusted. With the robot parked (or just starting) every
+    # buffered centroid sits at the same spot, so the principal direction is
+    # pure noise -- 43 of 72 large cross-track spikes in the 2026-10-28 run were
+    # exactly this. Kept below creep_speed * window (0.05 m/s * 1.5 s = 0.075 m)
+    # so ACQUIRE can still satisfy it at creep speed.
+    "min_baseline_m": 0.05,
 }
 
 
@@ -189,6 +215,30 @@ def _robust_spread(values):
         return 0.0
     median = np.median(values)
     return float(1.4826 * np.median(np.abs(values - median)))
+
+
+def _line_thickness(pts_xy):
+    """Robust spread of points PERPENDICULAR to their own best-fit line.
+
+    This is what max_cluster_y_spread is compared against. It replaced a plain
+    robust spread of the robot-frame y-values (2026-10-28) because that version
+    silently assumed the robot is always aligned with the rows: a perfectly
+    straight wall seen at a yaw of theta becomes a diagonal line in the robot
+    frame, so its y-values spread across the whole ROI depth -- ~4.7m * tan(theta).
+    At the 0.12m gate that rejected real, clean walls at only ~4 degrees of yaw,
+    blinding the detector (closed-loop sim + yaw sweep, 2026-10-28). Every
+    offline test ran at theta=0, so it never showed up there.
+
+    Measuring spread around the cluster's own principal axis keeps the gate's
+    original job -- a blend of two parallel rows still has a large spread
+    around any single line through it -- while being invariant to robot yaw.
+    """
+    pts = np.asarray(pts_xy, dtype=float)[:, :2]
+    if pts.shape[0] < 3:
+        return 0.0
+    centered = pts - pts.mean(axis=0)
+    _, _, vt = np.linalg.svd(centered, full_matrices=False)
+    return _robust_spread(centered.dot(vt[1]))
 
 
 class RowLineFit:
@@ -239,6 +289,8 @@ class RowLineFit:
         self._left_buf = deque(maxlen=self.window_size)   # list of (scan_i, xy)
         self._right_buf = deque(maxlen=self.window_size)
         self._scan_i = 0
+        self._fit_cache = None   # (scan_i, (left_fit, right_fit)); cleared by update()/reset()
+        self._pose_buf = deque(maxlen=self.window_size)   # (scan_i, xy) -- the ROBOT's own travel
         self.last_debug = {}
 
     def reset(self):
@@ -246,6 +298,8 @@ class RowLineFit:
         self._left_buf.clear()
         self._right_buf.clear()
         self._scan_i = 0
+        self._fit_cache = None
+        self._pose_buf.clear()
 
     # -- pipeline stage 1: canopy slice --------------------------------------
 
@@ -277,7 +331,7 @@ class RowLineFit:
         the centroid, or None if it doesn't look like a single real row
         (e.g. it's scattered noise instead).
         """
-        if _robust_spread(pts[:, 1]) > self.max_cluster_y_spread:
+        if _line_thickness(pts) > self.max_cluster_y_spread:
             return None
         roi_span = self.roi_x_max - self.roi_x_min
         x_range = pts[:, 0].max() - pts[:, 0].min()
@@ -314,6 +368,10 @@ class RowLineFit:
         min_x_range = self.min_cluster_x_coverage * full_x_range
 
         best_centroids, best_inertia = None, np.inf
+        best_one, best_one_inertia = None, np.inf
+        xs = np.array([self.cluster_x_scale, 1.0])
+        pts_o = pts                      # original-coordinate points (gates, returned centroids)
+        pts = pts_o * xs                 # working copy the k-means loop runs on
 
         for attempt in range(self.kmeans_restarts):
             if attempt == 0:
@@ -346,23 +404,43 @@ class RowLineFit:
 
             if abs(centroids[0][1] - centroids[1][1]) < self.min_cluster_separation_y:
                 continue  # structurally implausible as two different rows -- see GOTCHA above
-            if (_robust_spread(pts[assign0, 1]) > self.max_cluster_y_spread
-                    or _robust_spread(pts[~assign0, 1]) > self.max_cluster_y_spread):
-                continue  # a real row is tightly banded in y; this candidate is a blend of both
-            x_range0 = pts[assign0, 0].max() - pts[assign0, 0].min() if np.any(assign0) else 0.0
-            x_range1 = pts[~assign0, 0].max() - pts[~assign0, 0].min() if np.any(~assign0) else 0.0
-            if x_range0 < min_x_range or x_range1 < min_x_range:
-                continue  # confined to half the forward range -- a wrong-axis (x) split
+            # Gates and returned centroids use the ORIGINAL (unscaled) points;
+            # only the k-means assignment ran in the x-scaled working space.
+            c_orig = np.vstack([pts_o[assign0].mean(axis=0), pts_o[~assign0].mean(axis=0)])
+            x_range0 = pts_o[assign0, 0].max() - pts_o[assign0, 0].min()
+            x_range1 = pts_o[~assign0, 0].max() - pts_o[~assign0, 0].min()
+            clean0 = (_line_thickness(pts_o[assign0]) <= self.max_cluster_y_spread
+                      and x_range0 >= min_x_range)
+            clean1 = (_line_thickness(pts_o[~assign0]) <= self.max_cluster_y_spread
+                      and x_range1 >= min_x_range)
 
             inertia = (
                 np.sum(d0[assign0] ** 2) + np.sum(d1[~assign0] ** 2)
             )
+            if clean0 != clean1:
+                # Exactly one cluster is a clean line, the other is not (a blend,
+                # or a wall with something poking out of it). Remember the clean
+                # one as a one-sided result rather than discarding the whole scan.
+                # Added 2026-10-28: two hallway trash cans against the right wall
+                # failed the right cluster's thickness gate, and since BOTH clusters
+                # had to pass, a perfect left wall was thrown away too -- the buffer
+                # starved and the robot declared a false ROW_END. The same thing
+                # would happen in a field with a weed clump in one row.
+                if inertia < best_one_inertia:
+                    best_one_inertia = inertia
+                    best_one = c_orig[0 if clean0 else 1].copy()
+                continue
+            if not (clean0 and clean1):
+                continue  # neither is a clean line: a blend of both rows / wrong-axis split
+
             if inertia < best_inertia:
                 best_inertia = inertia
-                best_centroids = centroids.copy()
+                best_centroids = c_orig.copy()
 
         if best_centroids is None:
-            single = self._single_row_centroid(pts)
+            single = self._single_row_centroid(pts_o)
+            if single is None:
+                single = best_one
             if single is None:
                 return None, None, "none"
             return (single, None, "one_side") if single[1] >= 0 else (None, single, "one_side")
@@ -441,8 +519,8 @@ class RowLineFit:
         )
         group0 = pts[labels == counts[0][0]]
         group1 = pts[labels == counts[1][0]]
-        if (_robust_spread(group0[:, 1]) > self.max_cluster_y_spread
-                or _robust_spread(group1[:, 1]) > self.max_cluster_y_spread):
+        if (_line_thickness(group0) > self.max_cluster_y_spread
+                or _line_thickness(group1) > self.max_cluster_y_spread):
             return None, None, "none"
         full_x_range = pts[:, 0].max() - pts[:, 0].min()
         min_x_range = self.min_cluster_x_coverage * full_x_range
@@ -470,12 +548,16 @@ class RowLineFit:
         this every scan, not just the successful ones.
         """
         self._scan_i += 1
+        self._fit_cache = None
         canopy = self.slice_canopy(pts_xyz)
         if canopy.shape[0]:
+            xy = canopy[:, :2]
+            if xy.shape[0] > self.max_cluster_points:
+                xy = xy[self._rng.choice(xy.shape[0], size=self.max_cluster_points, replace=False)]
             if self.cluster_mode == "dbscan":
-                left_c, right_c, status = self.cluster_two_rows_dbscan(canopy[:, :2])
+                left_c, right_c, status = self.cluster_two_rows_dbscan(xy)
             else:
-                left_c, right_c, status = self.cluster_two_rows(canopy[:, :2])
+                left_c, right_c, status = self.cluster_two_rows(xy)
         else:
             left_c, right_c, status = None, None, "none"
 
@@ -484,6 +566,7 @@ class RowLineFit:
             "status": status, "clustered": status != "none",
         }
         x, y, theta = pose
+        self._pose_buf.append((self._scan_i, np.array([x, y])))
         c, s = np.cos(theta), np.sin(theta)
         rot = np.array([[c, -s], [s, c]])
         if left_c is not None:
@@ -574,10 +657,38 @@ class RowLineFit:
 
     def fit_lines(self):
         """RANSAC-fit the left and right accumulated buffers, after dropping
-        stale entries. Returns (left_fit, right_fit) dicts."""
+        stale entries. Returns (left_fit, right_fit) dicts.
+
+        Cached per scan: any_valid(), both_valid() and centerline_error() each
+        call this, so the controller was running the whole RANSAC three times
+        per scan (~28 ms) on identical data. update() clears the cache."""
+        if self._fit_cache is not None and self._fit_cache[0] == self._scan_i:
+            return self._fit_cache[1]
         left_fit = self._ransac_line(self._fresh_points(self._left_buf))
         right_fit = self._ransac_line(self._fresh_points(self._right_buf))
-        return left_fit, right_fit
+        result = (left_fit, right_fit)
+        self._fit_cache = (self._scan_i, result)
+        return result
+
+    def baseline(self):
+        """Distance the ROBOT itself travelled inside the current window, in
+        meters (max pairwise distance between the poses fed to update()).
+
+        Deliberately the robot's own motion, NOT the spread of the accumulated
+        centroids: a sparse scene's per-scan centroids jitter by tens of cm on
+        their own (synthetic test: ~1 m), which would make a parked robot look
+        like it had travelled. Zero when parked."""
+        cutoff = self._scan_i - self.window_size
+        pts = [xy for (i, xy) in self._pose_buf if i > cutoff]
+        if len(pts) < 2:
+            return 0.0
+        a = np.array(pts)
+        return float(np.linalg.norm(a[:, None, :] - a[None, :, :], axis=2).max())
+
+    def baseline_ok(self):
+        """True once the robot has travelled far enough inside the window for
+        the fitted line direction to mean something (see min_baseline_m)."""
+        return self.baseline() >= self.min_baseline_m
 
     def any_valid(self):
         """True when at least one side has a valid fit right now.
@@ -633,6 +744,21 @@ class RowLineFit:
           fine to keep using once already FOLLOWING, not trustworthy enough
           to enter FOLLOWING on).
         - neither side valid: returns None.
+
+        SIGN CONVENTION -- both errors are "robot relative to the row":
+          cross_track   > 0  -> robot is LEFT of the centerline
+          heading_error > 0  -> robot is pointing LEFT of the row direction
+        so a standard state-feedback law, angular = -(k1*cross_track +
+        k2*heading_error), turns the robot back toward the row on BOTH terms.
+
+        BUG FIXED 2026-10-28: heading_error used to be (row_heading - theta),
+        the opposite convention from cross_track. Inside row_follower_v3's
+        -(k1*xt + k2*he) law that made the heading term positive feedback --
+        it pumped energy into the oscillation instead of damping it. Offline
+        tests never caught it because every one of them ran at theta=0. A
+        closed-loop sim (2026-10-28) showed the old sign diverging in heading
+        with both the live and default gains, and the corrected sign
+        converging to dead center with both.
         """
         left_fit, right_fit = self.fit_lines()
         x, y, theta = robot_pose
@@ -660,6 +786,6 @@ class RowLineFit:
         normal = np.array([-direction[1], direction[0]])
         cross_track = float((pos - anchor).dot(normal))
         row_heading = float(np.arctan2(direction[1], direction[0]))
-        heading_error = _wrap_angle(row_heading - theta)
+        heading_error = _wrap_angle(theta - row_heading)
 
         return {"cross_track": cross_track, "heading_error": heading_error, "estimated": estimated}
