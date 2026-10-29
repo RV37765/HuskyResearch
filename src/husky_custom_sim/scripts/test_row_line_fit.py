@@ -315,6 +315,38 @@ for _ in range(200):
 check("20 evenly-spread points per side split into two rows in >=98% of scans (legacy: ~52%)",
       _bad <= 4, "failures=%d/200 (cluster_x_scale=%.2f)" % (_bad, RowLineFit().cluster_x_scale))
 
+# --- 18. Ground-plane mode handles sloped ground (2026-10-29) ---
+# A robot pitched nose-down sees the ground rise ahead in its own frame; a fixed
+# base_link height band then slices the soil as if it were canopy.
+def _sloped_world(pitch_deg, ground_z=-0.13, n_ground=3000):
+    k = _math.tan(_math.radians(pitch_deg))
+    gx = RNG.uniform(1.9, 5.0, n_ground); gy = RNG.uniform(-2.0, 2.0, n_ground)
+    ground = np.column_stack((gx, gy, ground_z + k * gx + RNG.normal(0, 0.01, n_ground)))
+    rows = []
+    for side in (0.45, -0.45):
+        x = RNG.uniform(0.3, 5.0, 400)
+        z = ground_z + k * x + RNG.uniform(0.25, 0.70, 400)       # plants 0.25-0.70 m above THEIR ground
+        rows.append(np.column_stack((x, side + RNG.normal(0, 0.02, 400), z)))
+    return np.vstack([ground] + rows)
+pts = _sloped_world(6.0)
+flat = RowLineFit(overrides={"z_min": 0.15, "z_max": 0.80}, seed=0)     # base_link band, ~ground+0.28..+0.93
+plane = RowLineFit(overrides={"ground_mode": "plane", "z_min": 0.20, "z_max": 0.80}, seed=0)
+n_flat_ground = int(np.sum((pts[:3000, 2] >= 0.15) & (pts[:3000, 2] <= 0.80)))
+cp = plane.slice_canopy(pts)
+check("6-deg slope: a base_link band lets ground points into the canopy slice", n_flat_ground > 200,
+      "ground points in base_link band: %d" % n_flat_ground)
+check("6-deg slope: plane mode fits the ground and keeps it out of the canopy slice",
+      plane.ground_ok and abs(_math.degrees(_math.atan(plane.last_ground[0])) - 6.0) < 1.0 and len(cp) < 900,
+      "ground_ok=%s tilt=%.1f deg canopy pts=%d (rows only = 800)" % (plane.ground_ok,
+      _math.degrees(_math.atan(plane.last_ground[0])) if plane.last_ground is not None else float('nan'), len(cp)))
+modes = [plane.update(_sloped_world(6.0), pose=(0.02 * k, 0, 0))["status"] for k in range(10)]
+check("6-deg slope: plane mode still splits both rows", modes.count("both") >= 9, "modes=%s" % sorted(set(modes)))
+flat_pts = _sloped_world(0.0)
+pl0 = RowLineFit(overrides={"ground_mode": "plane", "z_min": 0.20, "z_max": 0.80}, seed=0)
+pl0.slice_canopy(flat_pts)
+check("flat ground: fitted plane sits at the true ground height (-0.13 m)",
+      pl0.ground_ok and abs(pl0.last_ground[2] + 0.13) < 0.02, "c=%.3f" % (pl0.last_ground[2] if pl0.last_ground is not None else float('nan')))
+
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)
 print("\n%d/%d checks passed" % (n_pass, len(results)))

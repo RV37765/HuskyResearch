@@ -74,6 +74,7 @@ ROI window could confuse it. Not a concern for the offline prototype; flag
 for field validation.
 """
 
+import math
 import time
 from collections import deque
 
@@ -88,6 +89,21 @@ DEFAULTS = {
     # and starting values as row_confidence.py's z_min/z_max.
     "z_min": 0.05,
     "z_max": 0.70,
+
+    # What z_min/z_max are measured from.
+    #   "base_link": height above base_link (~0.13 m above ground). Right on a
+    #                flat floor; on a slope or furrow the fixed band tilts into
+    #                the soil and ground returns enter the "canopy".
+    #   "plane":     estimate the ground plane every scan (RANSAC on the lowest
+    #                points, as in Liu, Yandun & Kantor 2024) and slice on height
+    #                ABOVE THE GROUND. In this mode z_min/z_max mean meters
+    #                above the ground. Falls back to base_link for a scan whose
+    #                ground fit fails.
+    "ground_mode": "base_link",
+    "ground_inlier_thresh": 0.04,   # m, point-to-plane distance counted as ground
+    "ground_min_inliers": 60,
+    "ground_iters": 60,
+    "ground_max_tilt_deg": 20.0,    # reject a "ground" steeper than this (e.g. a wall base)
 
     # Forward-facing ROI, sensor frame (x = forward, y = left). Wider than
     # row_confidence.py's since k-means -- not a hard ROI wall -- does the
@@ -290,6 +306,8 @@ class RowLineFit:
         self._right_buf = deque(maxlen=self.window_size)
         self._scan_i = 0
         self._fit_cache = None   # (scan_i, (left_fit, right_fit)); cleared by update()/reset()
+        self.ground_ok = None    # plane mode: did this scan's ground fit succeed
+        self.last_ground = None  # plane mode: last (a, b, c) of z = a*x + b*y + c
         self._pose_buf = deque(maxlen=self.window_size)   # (scan_i, xy) -- the ROBOT's own travel
         self.last_debug = {}
 
@@ -309,12 +327,61 @@ class RowLineFit:
         if pts.ndim != 2 or pts.shape[1] < 3 or pts.shape[0] == 0:
             return np.empty((0, 3))
         finite = np.all(np.isfinite(pts[:, :3]), axis=1)
-        band = (pts[:, 2] >= self.z_min) & (pts[:, 2] <= self.z_max)
+        pts = pts[finite]
+        heights = pts[:, 2]
+        self.ground_ok = None
+        if self.ground_mode == "plane":
+            h = self._height_above_ground(pts)
+            self.ground_ok = h is not None
+            if h is not None:
+                heights = h
+        band = (heights >= self.z_min) & (heights <= self.z_max)
         roi = (
             (pts[:, 0] >= self.roi_x_min) & (pts[:, 0] <= self.roi_x_max)
             & (np.abs(pts[:, 1]) <= self.roi_y_abs_max)
         )
-        return pts[finite & band & roi]
+        return pts[band & roi]
+
+    def _height_above_ground(self, pts):
+        """Per-point height above a RANSAC ground plane z = a*x + b*y + c, or
+        None if no credible plane is found. Candidates are the lowest layer of
+        points in each 0.5 m forward bin: the ground wherever the lower beams
+        reach it (beyond ~1.9 m for this mount), wall/plant bases elsewhere --
+        those end up as RANSAC outliers. Seeded RNG -> deterministic replay."""
+        roi = ((pts[:, 0] >= self.roi_x_min) & (pts[:, 0] <= self.roi_x_max)
+               & (np.abs(pts[:, 1]) <= max(self.roi_y_abs_max, 2.0)))
+        cand = pts[roi]
+        if cand.shape[0] < self.ground_min_inliers:
+            return None
+        bins = np.floor((cand[:, 0] - self.roi_x_min) / 0.5).astype(int)
+        keep = np.zeros(cand.shape[0], dtype=bool)
+        for b in np.unique(bins):
+            m = bins == b
+            keep[m] = cand[m, 2] <= cand[m, 2].min() + 0.15
+        g = cand[keep]
+        if g.shape[0] > 2000:
+            g = g[self._rng.choice(g.shape[0], size=2000, replace=False)]
+        if g.shape[0] < self.ground_min_inliers:
+            return None
+        A = np.column_stack((g[:, 0], g[:, 1], np.ones(g.shape[0])))
+        best_n, best_mask = 0, None
+        for _ in range(self.ground_iters):
+            idx = self._rng.choice(g.shape[0], size=3, replace=False)
+            try:
+                coef = np.linalg.solve(A[idx], g[idx, 2])
+            except np.linalg.LinAlgError:
+                continue
+            mask = np.abs(A.dot(coef) - g[:, 2]) <= self.ground_inlier_thresh
+            n = int(mask.sum())
+            if n > best_n:
+                best_n, best_mask = n, mask
+        if best_mask is None or best_n < self.ground_min_inliers:
+            return None
+        coef = np.linalg.lstsq(A[best_mask], g[best_mask, 2], rcond=None)[0]
+        if math.hypot(coef[0], coef[1]) > math.tan(math.radians(self.ground_max_tilt_deg)):
+            return None
+        self.last_ground = coef
+        return pts[:, 2] - (coef[0] * pts[:, 0] + coef[1] * pts[:, 1] + coef[2])
 
     # -- pipeline stage 2: k-means split into left/right ---------------------
 
