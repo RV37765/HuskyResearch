@@ -78,6 +78,10 @@ def load(path):
         # CSVs from before the obstacle stop (2026-10-29) don't have these two.
         r["blocked"] = r.get("obstacle_blocked") == "True"
         r["path"] = int(r.get("path_points") or 0)
+        # Unwrapped odometry yaw, so changes across +/-180 deg add up correctly.
+        th = float(r["odom_theta_rad"])
+        r["thu"] = th if not i else rows[i - 1]["thu"] + math.atan2(
+            math.sin(th - rows[i - 1]["thu"]), math.cos(th - rows[i - 1]["thu"]))
     return rows
 
 
@@ -224,6 +228,24 @@ def report(rows, max_angular):
         print("  #%-2d      t=%6.1f s  s=%5.1f m  %4.0f s  %-9s %-24s before stop: %s"
               % (k, rows[a]["t"] - t0, rows[a]["s"], rows[b]["t"] - rows[a]["t"], rows[a]["state"],
                  pause_cause(rows, a, b), belief))
+
+    # -- odometry yaw: a parked robot's yaw should not move ------------------------
+    # The detector places centroids ~1-2 m ahead using the odometry pose, so a
+    # drifting odometry yaw tilts the fitted row direction (a heading bias),
+    # which the steering law turns into a steady sideways offset.
+    drv = [i for i, x in enumerate(v) if x >= MOVING_SPEED]
+    if drv:
+        a, b = drv[0], drv[-1]
+        print("ODOMETRY   yaw changed %+.1f deg while driving %.1f m (a straight hallway should give ~0)"
+              % (math.degrees(rows[b]["thu"] - rows[a]["thu"]), rows[b]["s"] - rows[a]["s"]))
+    parked_t = parked_d = 0.0
+    for a, b in pauses:
+        if rows[b]["t"] - rows[a]["t"] >= 5.0:
+            parked_t += rows[b]["t"] - rows[a]["t"]
+            parked_d += rows[b]["thu"] - rows[a]["thu"]
+    if parked_t:
+        print("           yaw drift while parked: %+.1f deg/min over %.0f s parked (should be ~0)"
+              % (math.degrees(parked_d) / parked_t * 60.0, parked_t))
 
 
 def main():
