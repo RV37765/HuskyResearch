@@ -115,6 +115,9 @@ def pause_cause(rows, a, b):
         return "ROW_END"
     if any(r["blocked"] for r in rows[max(0, a - 10):a + 5]):
         return "obstacle stop"
+    if b == len(rows) - 1:
+        # Ctrl-C on the node looks like an override (its last command lingers in the bag).
+        return "stopped till bag end"
     lin = [r["cmd_lin"] for r in rows[a:b + 1] if r["cmd_lin"] is not None]
     if lin and sum(lin) / len(lin) > 0.01:
         # The follower kept commanding forward speed but the robot sat still.
@@ -158,13 +161,15 @@ def report(rows, max_angular):
     if trk:
         xts = [r["xt"] * 100.0 for r in trk]
         axt = [abs(x) for x in xts]
-        ahe = [abs(math.degrees(r["he"])) for r in trk]
+        hes = [math.degrees(r["he"]) for r in trk]
+        ahe = [abs(h) for h in hes]
         print("TRACKING   FOLLOWING and moving, %d scans (detector's belief, not ground truth)" % len(trk))
         print("           cross-track: mean %+.1f cm | RMS %.1f | median |xt| %.1f | p95 %.1f | max %.1f cm"
               % (sum(xts) / len(xts), math.sqrt(sum(x * x for x in xts) / len(xts)),
                  _quantile(axt, 0.5), _quantile(axt, 0.95), max(axt)))
-        print("           heading:     median |he| %.1f deg | p95 %.1f deg | one-sided estimates %.0f%%"
-              % (_quantile(ahe, 0.5), _quantile(ahe, 0.95), _pct(sum(1 for r in trk if r["est"]), len(trk))))
+        print("           heading:     mean %+.1f deg | median |he| %.1f | p95 %.1f deg | one-sided estimates %.0f%%"
+              % (sum(hes) / len(hes), _quantile(ahe, 0.5), _quantile(ahe, 0.95),
+                 _pct(sum(1 for r in trk if r["est"]), len(trk))))
 
     # -- step response: only for runs started deliberately off-center (gain sweep)
     moving = [r for i, r in enumerate(rows) if v[i] >= MOVING_SPEED and r["xt"] is not None]
@@ -181,14 +186,20 @@ def report(rows, max_angular):
                  "after %.1f s / %.1f m" % (hit["t"] - first["t"], hit["s"] - first["s"]) if hit else "never",
                  overshoot * 100.0, STEP_WINDOW_M))
 
-    # -- steering ----------------------------------------------------------------
-    if fol:
-        mags = [abs(r["ang"]) for r in fol]
-        print("STEERING   mean |angular| %.3f rad/s | at the %.2f cap on %.0f%% of FOLLOWING scans"
-              % (sum(mags) / len(mags), max_angular, _pct(sum(1 for m in mags if m >= 0.999 * max_angular), len(mags))))
-    # /cmd_vel in the bag at scan i+1 is the live node's answer to scan i.
-    diffs = [abs(b["cmd_ang"] - a["ang"]) for a, b in zip(rows, rows[1:])
-             if b["cmd_ang"] is not None and b["cmd_lin"] and a["state"] != "ROW_END"]
+    # -- steering (driving scans only: a parked robot's commands mean nothing) -----
+    drive = [r for i, r in enumerate(rows) if r["state"] == "FOLLOWING" and v[i] >= MOVING_SPEED]
+    if drive:
+        angs = [r["ang"] for r in drive]
+        mags = [abs(a) for a in angs]
+        # A steady nonzero signed mean is the controller leaning against something:
+        # a robot that pulls to one side, or a biased heading estimate.
+        print("STEERING   while driving: mean |angular| %.4f rad/s | signed mean %+.4f | at the %.2f cap %.0f%%"
+              % (sum(mags) / len(mags), sum(angs) / len(angs), max_angular,
+                 _pct(sum(1 for m in mags if m >= 0.999 * max_angular), len(mags))))
+    # /cmd_vel in the bag at scan i+1 is the live node's answer to scan i. Driving
+    # scans only: after Ctrl-C the bag keeps the node's last command forever.
+    diffs = [abs(b["cmd_ang"] - a["ang"]) for i, (a, b) in enumerate(zip(rows, rows[1:]))
+             if b["cmd_ang"] is not None and b["cmd_lin"] and a["state"] != "ROW_END" and v[i] >= MOVING_SPEED]
     if diffs:
         print("           live vs replay steering: mean |diff| %.4f rad/s over %d scans"
               " (near 0 = replay ran the run's settings)" % (sum(diffs) / len(diffs), len(diffs)))
