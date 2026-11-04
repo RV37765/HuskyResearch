@@ -246,6 +246,10 @@ def report(rows, max_angular):
     if parked_t:
         print("           yaw drift while parked: %+.1f deg/min over %.0f s parked (should be ~0)"
               % (math.degrees(parked_d) / parked_t * 60.0, parked_t))
+    learned = [r["drift_rate"] for r in rows if r.get("drift_rate") not in ("", None)]
+    if learned:
+        print("           drift correction ON: learned gyro drift %+.5f rad/s (%+.1f deg/min) by the end"
+              % (float(learned[-1]), math.degrees(float(learned[-1])) * 60.0))
 
 
 def main():
