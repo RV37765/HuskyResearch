@@ -39,6 +39,7 @@ import rosbag
 import yaml
 
 from frame_utils import apply_rigid, chain_to_target, cloud_xyz, describe, rigid_from_transform_msg
+from odom_drift import YawDriftCorrector
 from row_follower_state import STATE_ACQUIRE, apply_baseline_gate, step_state, steering_command
 from row_line_fit import DEFAULTS, RowLineFit
 import safety
@@ -87,6 +88,10 @@ def main():
                     help="skip the sensor->base_link transform (reproduces the pre-2026-10-28 behavior)")
     ap.add_argument("--override", action="append", metavar="KEY=VALUE",
                     help="any row_line_fit DEFAULTS key, e.g. --override max_cluster_y_spread=0.2; repeatable")
+    ap.add_argument("--drift-correct", action="store_true",
+                    help="remove the gyro's yaw drift from the odometry (odom_drift.py; matches ~drift_correct)")
+    ap.add_argument("--stall-reset-sec", type=float, default=1.0,
+                    help="reset the detector after a scan gap longer than this (0 = never; matches ~stall_reset_sec)")
     args = ap.parse_args()
 
     # Same layering as the launch file: code defaults < base yaml < env overlay < CLI.
@@ -116,26 +121,37 @@ def main():
     state, streak, last_angular = STATE_ACQUIRE, 0, 0.0
     sc = safety.DEFAULTS
     gate = safety.ObstacleGate(sc["min_points"], sc["trigger_scans"], sc["clear_scans"])
+    drift = YawDriftCorrector() if args.drift_correct else None
     pose, last_odom_stamp = (0.0, 0.0, 0.0), None
     cmd = (float("nan"), float("nan"))
     prev_cloud_t = None
-    rows, scan_i = [], 0
+    rows, scan_i, stall_resets = [], 0, 0
 
     for topic, msg, _ in bag.read_messages(topics=[args.cloud_topic, args.odom_topic, args.cmd_topic]):
         if topic == args.odom_topic:
             p = msg.pose.pose.position
-            pose = (p.x, p.y, _yaw_from_quaternion(msg.pose.pose.orientation))
+            yaw = _yaw_from_quaternion(msg.pose.pose.orientation)
+            if drift is not None:
+                pose = drift.update(msg.header.stamp.to_sec(), p.x, p.y, yaw, msg.twist.twist.linear.x)
+            else:
+                pose = (p.x, p.y, yaw)
             last_odom_stamp = msg.header.stamp
             continue
         if topic == args.cmd_topic:
             cmd = (msg.linear.x, msg.angular.z)
             continue
+        if last_odom_stamp is None:
+            continue  # same as the live node: no pose yet, nothing to place the scan with
 
         scan_i += 1
         stamp = msg.header.stamp
-        pose_age = (stamp - last_odom_stamp).to_sec() if last_odom_stamp is not None else None
+        pose_age = (stamp - last_odom_stamp).to_sec()
         cloud_dt = (stamp.to_sec() - prev_cloud_t) if prev_cloud_t is not None else None
         prev_cloud_t = stamp.to_sec()
+        if args.stall_reset_sec > 0 and cloud_dt is not None and cloud_dt > args.stall_reset_sec:
+            rlf.reset()
+            state, streak, last_angular = STATE_ACQUIRE, 0, 0.0
+            stall_resets += 1
 
         if sensor_rt is None and not args.no_transform:
             try:
@@ -186,6 +202,7 @@ def main():
             "cmd_linear": round(cmd[0], 3) if cmd[0] == cmd[0] else "",
             "cmd_angular": round(cmd[1], 4) if cmd[1] == cmd[1] else "",
             "low_conf_streak": streak,
+            "drift_rate": round(drift.rate, 5) if drift is not None else "",
         })
 
     bag.close()
@@ -208,6 +225,11 @@ def main():
         print("obstacle stop would have held the robot on %d scans (max in-path points %d)"
               % (sum(1 for r in rows if r["obstacle_blocked"]), max(r["path_points"] for r in rows)))
         print("state changes: %s" % changes)
+        if drift is not None:
+            print("drift correction: learned yaw drift %+.5f rad/s (%+.1f deg/min)%s"
+                  % (drift.rate, math.degrees(drift.rate) * 60, "" if drift.learned else " -- NEVER LEARNED (robot never parked 2 s)"))
+        if stall_resets:
+            print("stall recovery: detector reset %d time(s) after a scan gap > %.1f s" % (stall_resets, args.stall_reset_sec))
 
 
 if __name__ == "__main__":

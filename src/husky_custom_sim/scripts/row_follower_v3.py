@@ -96,6 +96,7 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Bool
 
 from frame_utils import apply_rigid, cloud_xyz, describe, rigid_from_transform_msg
+from odom_drift import YawDriftCorrector
 from row_follower_state import (
     STATE_ACQUIRE, STATE_CREEPING, STATE_FOLLOWING, STATE_ROW_END, apply_baseline_gate, step_state, steering_command,
 )
@@ -152,6 +153,16 @@ class RowFollowerV3:
         self.obstacle_cfg = {k: rospy.get_param("~obstacle/%s" % k, v) for k, v in safety.DEFAULTS.items()}
         self.obstacle_gate = safety.ObstacleGate(
             self.obstacle_cfg["min_points"], self.obstacle_cfg["trigger_scans"], self.obstacle_cfg["clear_scans"])
+
+        # Gyro drift correction (odom_drift.py). Off by default until tape-measure ground
+        # truth (E2) compares it on the robot. When on, the node holds still for up to
+        # startup_hold_sec so the drift is learned before it drives.
+        self.drift_correct = bool(rospy.get_param("~drift_correct", False))
+        self.startup_hold_sec = float(rospy.get_param("~startup_hold_sec", 4.0))
+        # After a gap in scans longer than this the buffered centroids are stale and the
+        # odometry yaw has drifted meanwhile (2026-11-03: a 38.7 s LiDAR dropout, then a
+        # 1 m cross-track spike): reset the detector and re-acquire. 0 disables.
+        self.stall_reset_sec = float(rospy.get_param("~stall_reset_sec", 1.0))
         self._sensor_tf = None
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
@@ -167,6 +178,10 @@ class RowFollowerV3:
         self._have_odom = False
         self.last_angular = 0.0
         self.paused = False
+        self.drift = YawDriftCorrector() if self.drift_correct else None
+        self._first_odom_t = None
+        self._last_cloud_t = None
+        self._drift_warned = False
 
         self.rlf = RowLineFit(overrides=_load_overrides())
         self.state = STATE_ACQUIRE
@@ -192,11 +207,21 @@ class RowFollowerV3:
                       self.obstacle_cfg["x_max"], self.obstacle_cfg["half_width"], self.obstacle_cfg["min_points"])
         rospy.loginfo("Pause: rostopic pub -1 %s std_msgs/Bool \"data: true\" (false resumes)",
                       rospy.resolve_name("~pause"))
+        rospy.loginfo("Gyro drift correction: %s | detector reset after %.1f s without scans",
+                      "ON (startup hold up to %.0f s)" % self.startup_hold_sec if self.drift_correct else "OFF",
+                      self.stall_reset_sec)
         rospy.logwarn("SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.")
 
     def _on_odom(self, msg):
         p = msg.pose.pose.position
-        self.pose = (p.x, p.y, _yaw_from_quaternion(msg.pose.pose.orientation))
+        yaw = _yaw_from_quaternion(msg.pose.pose.orientation)
+        t = msg.header.stamp.to_sec()
+        if self.drift is not None:
+            self.pose = self.drift.update(t, p.x, p.y, yaw, msg.twist.twist.linear.x)
+        else:
+            self.pose = (p.x, p.y, yaw)
+        if self._first_odom_t is None:
+            self._first_odom_t = t
         self._have_odom = True
 
     def _on_pause(self, msg):
@@ -221,6 +246,14 @@ class RowFollowerV3:
         if not self._have_odom:
             rospy.logwarn_throttle(5.0, "row_follower_v3: waiting for first %s message", self.odom_topic)
             return
+
+        stamp = msg.header.stamp.to_sec()
+        if self._last_cloud_t is not None and 0.0 < self.stall_reset_sec < stamp - self._last_cloud_t:
+            rospy.logwarn("row_follower_v3: %.1f s without scans -- detector reset, re-acquiring",
+                          stamp - self._last_cloud_t)
+            self.rlf.reset()
+            self.state, self.low_conf_streak, self.last_angular = STATE_ACQUIRE, 0, 0.0
+        self._last_cloud_t = stamp
 
         if self.target_frame and self._sensor_tf is None:
             try:
@@ -282,6 +315,16 @@ class RowFollowerV3:
             twist.linear.x = 0.0
             twist.angular.z = 0.0
 
+        if self.drift is not None and not self.drift.learned:
+            if stamp - self._first_odom_t < self.startup_hold_sec:
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                rospy.loginfo_throttle(1.0, "Holding still to learn the gyro drift...")
+            elif not self._drift_warned:
+                rospy.logwarn("row_follower_v3: gyro drift not learned (was the robot moving?) -- "
+                              "running uncorrected until it next stops for 2 s")
+                self._drift_warned = True
+
         if self.state == STATE_CREEPING:
             rospy.loginfo_throttle(
                 0.5, "CREEPING: no valid fit, streak %d/%d", self.low_conf_streak, self.rlf.window_size,
@@ -296,9 +339,10 @@ class RowFollowerV3:
             err["cross_track"], err["heading_error"], " (est)" if err["estimated"] else "",
         ) if err is not None else "none"
         rospy.loginfo_throttle(
-            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | path=%d%s%s | proc=%.0fms",
+            1.0, "[%s] err=%s angular=%.3f | clusters=%s n_canopy=%d | path=%d%s%s | proc=%.0fms%s",
             self.state, err_str, angular, dbg["status"], dbg["n_canopy"], path_pts,
             " BLOCKED" if blocked else "", " PAUSED" if self.paused else "", self._proc_ms_ema,
+            " | drift=%+.4f" % self.drift.rate if self.drift is not None else "",
         )
 
         self.cmd_pub.publish(twist)

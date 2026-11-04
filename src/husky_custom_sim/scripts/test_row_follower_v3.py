@@ -15,6 +15,8 @@ Two layers, same spirit as test_row_line_fit.py:
      ever touches a real sensor.
 """
 
+import math
+
 import numpy as np
 
 from row_follower_state import (
@@ -176,6 +178,80 @@ check("gate stays blocked until clear_scans consecutive clear scans", _seq[:9] =
 _g2 = _safety.ObstacleGate(min_points=20, trigger_scans=3, clear_scans=10)
 _seq = [_g2.update(n) for n in (200, 0, 200, 0, 200, 0)]
 check("isolated single-scan hits never block (debounce)", not any(_seq), "seq=%s" % _seq)
+
+# --- gyro yaw-drift correction (odom_drift.py, 2026-11-03) ---
+from odom_drift import YawDriftCorrector
+
+DRIFT = 0.005   # rad/s: the UM7 bias measured with the robot parked on 2026-11-03
+
+
+def drifting_odom(segments, drift=DRIFT, hz=50.0):
+    """Raw odometry for a robot whose TRUE heading never changes, while its yaw creeps at
+    `drift` and its position is integrated along that drifting yaw (what the EKF does).
+    segments: [(seconds, forward_speed, extra_turn_rate), ...]. Yields (t, x, y, yaw, speed)."""
+    t = x = y = yaw = 0.0
+    for seconds, speed, turn in segments:
+        for _ in range(int(seconds * hz)):
+            yield t, x, y, yaw, speed
+            yaw += (drift + turn) / hz
+            x += speed / hz * math.cos(yaw)
+            y += speed / hz * math.sin(yaw)
+            t += 1.0 / hz
+
+
+_c = YawDriftCorrector()
+_out = [(_s[4], _c.update(*_s)) for _s in drifting_odom([(3.0, 0.0, 0.0), (20.0, 0.2, 0.0)])]
+_drive = [p for v, p in _out if v > 0]
+check("drift: learns the parked yaw rate (within 5%)", abs(_c.rate - DRIFT) < 0.05 * DRIFT, "rate=%.5f" % _c.rate)
+check("drift: corrected yaw holds still over a 20 s straight drive (raw drifts 0.1 rad)",
+      abs(_drive[-1][2] - _drive[0][2]) < 0.002, "change=%.5f rad" % (_drive[-1][2] - _drive[0][2]))
+_travel = math.atan2(_drive[-1][1] - _drive[0][1], _drive[-1][0] - _drive[0][0])
+check("drift: corrected path runs along the corrected heading (path and yaw stay consistent)",
+      abs(_travel - _drive[-1][2]) < 0.002, "travel=%.4f yaw=%.4f" % (_travel, _drive[-1][2]))
+_c = YawDriftCorrector()
+_same = all(abs(a - b) < 1e-12 for _s in drifting_odom([(10.0, 0.2, 0.0)]) for a, b in zip(_c.update(*_s), _s[1:4]))
+check("drift: never parked -> nothing learned, pose passes through unchanged", _same and not _c.learned)
+_c = YawDriftCorrector()
+for _s in drifting_odom([(4.0, 0.0, 0.5)]):
+    _c.update(*_s)
+check("drift: turning in place with the joystick is not mistaken for drift", not _c.learned, "rate=%.4f" % _c.rate)
+_c = YawDriftCorrector()
+for _s in drifting_odom([(3.0, 0.0, 0.0), (5.0, 0.2, 0.0), (3.0, 0.0, -0.002)]):
+    _c.update(*_s)
+check("drift: a later stop refreshes the estimate (bias moved 0.005 -> 0.003)",
+      abs(_c.rate - 0.003) < 0.0003, "rate=%.5f" % _c.rate)
+
+
+def hallway_with_drift(correct, n_scans=300, v=0.2, hz=9.9):
+    """The 2026-11-03 bug, reproduced: drive dead-center down a straight hallway while the
+    odometry yaw drifts. Returns the detector's mean (heading_error, cross_track)."""
+    det = RowLineFit(overrides={"roi_y_abs_max": 1.5}, seed=3)
+    corr = YawDriftCorrector()
+    odom = drifting_odom([(3.0, 0.0, 0.0), (n_scans / hz, v, 0.0)])
+    hes, xts = [], []
+    for k, s in enumerate(odom):
+        pose = corr.update(*s) if correct else s[1:4]
+        if s[4] == 0.0 or k % 5:      # odometry at 50 Hz, a scan every 5th sample (~10 Hz)
+            continue
+        det.update(make_hallway_scan(0.0), pose=pose)   # walls in the TRUE robot frame: centered, parallel
+        err = det.centerline_error(pose)
+        if err is not None and det._scan_i > 30:
+            hes.append(err["heading_error"])
+            xts.append(err["cross_track"])
+    return (float(np.mean(hes)), float(np.mean(xts)), len(hes)) if hes else (float("nan"), float("nan"), 0)
+
+
+# The synthetic walls have 60 points each, so the per-scan centroid jitters ~0.2 m along
+# the wall; that dilutes the heading tilt here (real walls give thousands of points and
+# showed -1.9 deg). The cross-track shift survives either way.
+_he, _xt, _n = hallway_with_drift(correct=False)
+check("drift bug reproduced: raw drifting odometry biases heading and cross-track",
+      _n > 100 and _he < -math.radians(0.3) and _xt > 0.02,
+      "mean he=%.2f deg, xt=%.1f cm, n=%d" % (math.degrees(_he), 100 * _xt, _n))
+_he, _xt, _n = hallway_with_drift(correct=True)
+check("drift corrected: heading and cross-track bias gone (<0.3 deg, <1 cm)",
+      _n > 100 and abs(_he) < math.radians(0.3) and abs(_xt) < 0.01,
+      "mean he=%.2f deg, xt=%.1f cm, n=%d" % (math.degrees(_he), 100 * _xt, _n))
 
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)
