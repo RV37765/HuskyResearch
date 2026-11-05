@@ -1,0 +1,40 @@
+# row_line_fit_field.yaml -- FIELD overlay (cotton, 36-inch rows), loaded on top of
+# row_line_fit.yaml by row_follower_v3.launch (env:=field).
+#
+# DRAFT, 2026-11-04. Every value is reasoned from the literature and a synthetic
+# closed-loop field (claude/experiments/field_sim.py), not from field data -- there
+# is none yet. In that sim, young, mid-season and mature canopy all stopped at
+# 19.5-19.8 m of a 20 m row, held |y| p95 under 2 cm and crossed a 1.5 m gap; the
+# hallway values drove into the row every time. Expect these to change after the
+# first outdoor bag, and write down what changed and why.
+#
+# Other row geometry (e.g. surrogate rows of trash cans 1.4 m apart): override per run,
+#   roslaunch husky_custom_sim row_follower_v3.launch env:=field row_half_width:=0.70 roi_y_abs_max:=1.30
+
+# 36 in (0.914 m) is the standard Georgia row spacing. Not yet measured on the actual
+# field -- measure it at five places on the first visit.
+row_half_width: 0.457
+
+# Covers the plant lines on either side (+/-0.46 m) plus canopy spread and a robot
+# that is off-center or yawed, while excluding the next rows over (+/-1.37 m).
+roi_y_abs_max: 0.90
+
+# Heights from a ground plane fitted every scan instead of from base_link: on uneven
+# ground a fixed band tilts into the soil or over the plants. Checked so far only on
+# the hallway floor (plane 0.125 m below base_link in 204/204 scans). When no credible
+# plane is found, heights fall back to base_link (~0.13 m above ground).
+ground_mode: plane
+
+# Heights above that plane. 0.08 keeps young cotton (~0.35 m tall) and assumes bare
+# soil between rows -- raise it to 0.15-0.20 where grass or weeds grow (z_min:=0.20).
+# 1.30 keeps the top of mature plants (0.6-1.5 m) that the base file's 0.70 cuts off.
+z_min: 0.08
+z_max: 1.30
+
+# Plant returns scatter more than wall returns (10-15 cm across the row), so the gates
+# tuned on dense hallway walls loosen.
+max_cluster_y_spread: 0.20      # base 0.12
+ransac_inlier_thresh: 0.12      # base 0.08
+# Rows are 0.91 m apart, so a real left/right split is at least ~0.6 m wide; 0.30
+# still rejects one row cut in two.
+min_cluster_separation_y: 0.30

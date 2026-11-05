@@ -17,7 +17,7 @@
       roslaunch husky_custom_sim row_follower_v3.launch
       roslaunch husky_custom_sim row_follower_v3.launch row_half_width:=1.4 roi_y_abs_max:=2.5
       roslaunch husky_custom_sim row_follower_v3.launch k_lateral:=0.6 k_heading:=0.6 max_angular:=0.15
-      roslaunch husky_custom_sim row_follower_v3.launch env:=field     (needs row_line_fit_field.yaml, Stage 2)
+      roslaunch husky_custom_sim row_follower_v3.launch env:=field     (draft field values, see row_line_fit_field.yaml)
       roslaunch husky_custom_sim row_follower_v3.launch obstacle_stop:=false   (disable the forward stop)
 
     Hands-free hold while measuring (another terminal; "data: false" resumes):
