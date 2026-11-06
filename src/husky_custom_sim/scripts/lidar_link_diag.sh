@@ -43,7 +43,9 @@ ethtool --show-eee $IF 2>/dev/null | grep -iE "EEE status|active"
 echo "== does a network manager own $IF?"
 command -v nmcli >/dev/null && nmcli -t device status 2>/dev/null | grep -E "$IF|br0"
 networkctl list 2>/dev/null | grep -E "$IF|br0"
-ls /etc/netplan/ 2>/dev/null && grep -vE "^\s*#" /etc/netplan/*.yaml 2>/dev/null | head -40
+# The WiFi file holds a login: print the structure, never the secrets.
+ls /etc/netplan/ 2>/dev/null && grep -vE "^\s*#" /etc/netplan/*.yaml 2>/dev/null \
+  | sed -E 's/((password|identity|psk)[^:]*:).*/\1 <hidden>/I' | head -40
 
 echo "== system journal around the last burst (anything besides the kernel driver?)"
 last=$(dmesg -T | grep "$IF NIC Link is Down" | tail -3 | head -1 | sed 's/^\[\(.*\)\].*/\1/')
