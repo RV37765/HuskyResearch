@@ -35,6 +35,10 @@ echo "== who is on the robot network (a Velodyne MAC starts 60:76:88)"
 ip neigh show dev br0 2>/dev/null
 echo "== bridge members and link state"
 bridge link 2>/dev/null || ip -br link show
+# With STP on, a port that comes back up waits 2 x forward_delay (listening, then
+# learning) before it forwards: a short flap could become ~30 s of no data.
+echo "  br0 stp_state=$(cat /sys/class/net/br0/bridge/stp_state 2>/dev/null) (1 = on)" \
+     " forward_delay=$(cat /sys/class/net/br0/bridge/forward_delay 2>/dev/null) (1/100 s)"
 
 echo "== NIC settings ($IF)"
 ethtool $IF 2>/dev/null | grep -E "Speed|Duplex|Auto-negotiation|Link detected"
