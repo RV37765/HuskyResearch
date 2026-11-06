@@ -347,6 +347,35 @@ pl0.slice_canopy(flat_pts)
 check("flat ground: fitted plane sits at the true ground height (-0.13 m)",
       pl0.ground_ok and abs(pl0.last_ground[2] + 0.13) < 0.02, "c=%.3f" % (pl0.last_ground[2] if pl0.last_ground is not None else float('nan')))
 
+# --- 19. side_openings: a hole in one wall is measured, not just bridged (2026-11-06) ---
+# On 2026-11-03 the robot passed a hallway-sized opening with both sides "seen" the
+# whole time: one centroid per side per scan hides a hole in that side.
+from row_line_fit import side_openings
+def _walls(hole=None, end=None, n=400):
+    pts = []
+    for wy in (0.9, -0.9):
+        x = RNG.uniform(0.3, 5.0, n)
+        if wy > 0 and hole:
+            x = x[(x < hole[0]) | (x > hole[1])]
+        if wy > 0 and end:
+            x = x[x < end]
+        pts.append(np.column_stack((x, np.full(x.size, wy), np.full(x.size, Z_MID))))
+    return np.vstack(pts)
+o = side_openings(_walls(), 0.3, 5.0)
+check("side_openings: continuous walls show no hole over 0.2 m",
+      o["left"]["open_m"] < 0.2 and o["right"]["open_m"] < 0.2, "left %.2f right %.2f" % (o["left"]["open_m"], o["right"]["open_m"]))
+o = side_openings(_walls(hole=(1.5, 3.5)), 0.3, 5.0)
+check("side_openings: a 2 m hole in the left wall is found at 1.5-3.5 m; the right wall stays closed",
+      abs(o["left"]["open_m"] - 2.0) < 0.1 and abs(o["left"]["open_from"] - 1.5) < 0.1 and o["right"]["open_m"] < 0.2,
+      "left %s" % o["left"])
+o = side_openings(_walls(end=3.0), 0.3, 5.0)
+check("side_openings: a side that stops at 3 m is an end (end_x ~3), not an opening",
+      abs(o["left"]["end_x"] - 3.0) < 0.1 and o["left"]["open_m"] < 0.2 and o["right"]["end_x"] > 4.8, "left %s" % o["left"])
+rlf = RowLineFit(seed=0)
+rlf.update(_walls(), pose=(0.0, 0.0, 0.0))
+check("update() keeps the scan's canopy slice for diagnostics (last_canopy)", rlf.last_canopy.shape[0] > 700,
+      "%d points" % rlf.last_canopy.shape[0])
+
 # --- Summary -----------------------------------------------------------------
 n_pass = sum(1 for r in results if r)
 print("\n%d/%d checks passed" % (n_pass, len(results)))

@@ -27,6 +27,9 @@ Diagnostic columns beyond the live node's log:
   cmd_linear/angular  what the live node actually COMMANDED (/cmd_vel in the bag)
   replay_angular    what this replay's steering law computes (should track the above
                     when gains/config match the run -- if not, the run used other settings)
+  open_<side>_m/from/to  largest hole in that side's canopy points with the row
+                    resuming beyond it, robot-frame x (row_line_fit.side_openings)
+  <side>_end_x      where that side's canopy points stop this scan
 """
 
 import argparse
@@ -41,7 +44,7 @@ import yaml
 from frame_utils import apply_rigid, chain_to_target, cloud_xyz, describe, rigid_from_transform_msg
 from odom_drift import YawDriftCorrector
 from row_follower_state import STATE_ACQUIRE, apply_baseline_gate, step_state, steering_command
-from row_line_fit import DEFAULTS, RowLineFit
+from row_line_fit import DEFAULTS, RowLineFit, side_openings
 import safety
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
@@ -167,6 +170,7 @@ def main():
         path_pts = safety.points_in_path(pts, sc["x_min"], sc["x_max"], sc["half_width"], sc["z_min"], sc["z_max"])
         blocked = gate.update(path_pts)
         dbg = rlf.update(pts, pose=pose)
+        opn = side_openings(rlf.last_canopy, rlf.roi_x_min, rlf.roi_x_max)
         left_fit, right_fit = rlf.fit_lines()
         any_valid = left_fit["valid"] or right_fit["valid"]
         both_valid = left_fit["valid"] and right_fit["valid"]
@@ -181,6 +185,9 @@ def main():
             if not fit.get("valid"):
                 return ""
             return round(math.degrees(math.atan2(fit["direction"][1], fit["direction"][0])), 1)
+
+        def r2(val):
+            return round(val, 2) if val is not None else ""
 
         rows.append({
             "scan_i": scan_i,
@@ -203,6 +210,10 @@ def main():
             "cmd_angular": round(cmd[1], 4) if cmd[1] == cmd[1] else "",
             "low_conf_streak": streak,
             "drift_rate": round(drift.rate, 5) if drift is not None else "",
+            "open_left_m": r2(opn["left"]["open_m"]), "open_left_from": r2(opn["left"]["open_from"]),
+            "open_left_to": r2(opn["left"]["open_to"]), "left_end_x": r2(opn["left"]["end_x"]),
+            "open_right_m": r2(opn["right"]["open_m"]), "open_right_from": r2(opn["right"]["open_from"]),
+            "open_right_to": r2(opn["right"]["open_to"]), "right_end_x": r2(opn["right"]["end_x"]),
         })
 
     bag.close()

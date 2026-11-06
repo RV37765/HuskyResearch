@@ -36,6 +36,8 @@ STALL_SEC = 0.3       # a gap between clouds longer than this is a scan stall
 SETTLED_M = 0.05      # |cross-track| below this counts as on the centerline
 STEP_START_M = 0.15   # a run starting at least this far off-center gets a STEP line
 STEP_WINDOW_M = 6.0   # overshoot is looked for this far past the first centerline crossing
+OPEN_MIN_M = 1.0      # a hole this long in one side's points, row resuming beyond, is an opening
+OPEN_MERGE_SCANS = 5  # sightings of an opening this few scans apart are the same opening
 
 
 def _num(cell):
@@ -78,6 +80,11 @@ def load(path):
         # CSVs from before the obstacle stop (2026-10-29) don't have these two.
         r["blocked"] = r.get("obstacle_blocked") == "True"
         r["path"] = int(r.get("path_points") or 0)
+        # CSVs from before 2026-11-06 don't have the opening columns.
+        for side in ("left", "right"):
+            r["open_" + side] = _num(r.get("open_%s_m" % side)) or 0.0
+            r["open_from_" + side] = _num(r.get("open_%s_from" % side))
+            r["open_to_" + side] = _num(r.get("open_%s_to" % side))
         # Unwrapped odometry yaw, so changes across +/-180 deg add up correctly.
         th = float(r["odom_theta_rad"])
         r["thu"] = th if not i else rows[i - 1]["thu"] + math.atan2(
@@ -110,6 +117,17 @@ def segments(flags):
             start = None
     if start is not None:
         out.append((start, len(flags) - 1))
+    return out
+
+
+def merge(segs, max_gap):
+    """Join (first, last) segments separated by at most max_gap indices."""
+    out = []
+    for a, b in segs:
+        if out and a - out[-1][1] - 1 <= max_gap:
+            out[-1] = (out[-1][0], b)
+        else:
+            out.append((a, b))
     return out
 
 
@@ -158,6 +176,32 @@ def report(rows, max_angular):
         one = sum(1 for r in fol if r["left"] != r["right"])
         print("DETECTION  in FOLLOWING (%d scans): both sides %.0f%% | one side %.0f%% | neither %.0f%%"
               % (len(fol), _pct(both, len(fol)), _pct(one, len(fol)), _pct(len(fol) - both - one, len(fol))))
+
+    # -- openings: a hole in one side with that side resuming beyond (2026-11-06) ----
+    # The detector bridges these on purpose (a missing plant is not a row end); this
+    # shows that it SAW each one, and what the robot was doing while passing it.
+    # Path position: s + the hole's robot-frame x. The far edge stays in view, so
+    # s + to holds still; the near edge is clipped once it passes the ROI start, so
+    # the earliest s + from is its true position.
+    if "open_left_m" in rows[0]:
+        events = []
+        for side in ("left", "right"):
+            flags = [r["open_" + side] >= OPEN_MIN_M for r in rows]
+            events += [(a, b, side) for a, b in merge(segments(flags), OPEN_MERGE_SCANS)]
+        print("OPENINGS   %d hole(s) of %.1f m or more in one side, with that side resuming beyond"
+              % (len(events), OPEN_MIN_M))
+        for a, b, side in sorted(events):
+            ev = [r for r in rows[a:b + 1] if r["open_" + side] >= OPEN_MIN_M]
+            start = min(r["s"] + r["open_from_" + side] for r in ev)
+            end = _quantile([r["s"] + r["open_to_" + side] for r in ev], 0.5)
+            states = {}
+            for r in rows[a:b + 1]:
+                states[r["state"]] = states.get(r["state"], 0) + 1
+            print("           %-5s %.1f m wide at s=%5.1f-%5.1f m | in view %.1f m of travel | %s | %s line valid %.0f%%, one-sided %.0f%%"
+                  % (side, end - start, start, end, rows[b]["s"] - rows[a]["s"],
+                     " ".join("%s %.0f%%" % (k, _pct(c, b - a + 1)) for k, c in states.items()),
+                     side, _pct(sum(1 for r in rows[a:b + 1] if r[side]), b - a + 1),
+                     _pct(sum(1 for r in rows[a:b + 1] if r["est"]), b - a + 1)))
 
     # -- tracking (detector's belief) -------------------------------------------
     trk = [r for i, r in enumerate(rows)

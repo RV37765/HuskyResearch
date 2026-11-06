@@ -257,6 +257,43 @@ def _line_thickness(pts_xy):
     return _robust_spread(centered.dot(vt[1]))
 
 
+def side_openings(canopy_pts, x_min, x_max, split_y=0.0):
+    """Largest forward hole in each side's canopy points this scan (robot frame).
+
+    The detector keeps one centroid per side per scan, so a wall or row with a
+    2 m hole in it still yields a centroid and a valid line, and the hole is
+    invisible downstream. On 2026-11-03 the robot drove past a hallway-sized
+    opening with both sides "seen" the whole time. This measures the hole. It
+    changes no decision: bridging a one-sided gap is the designed behavior (a
+    missing plant is not a row end).
+
+    Points with y > split_y are the left side, the rest the right. Per side:
+      open_m, open_from, open_to  the largest x-gap with canopy points BEYOND
+                                  it (the row resumes). Its near edge can be
+                                  x_min: an opening beside the robot.
+      end_x                       the farthest point's x: ~x_max while the row
+                                  continues, shrinking as a row end nears.
+    A side with no points gets open_m 0.0 and None for the rest.
+    """
+    pts = np.asarray(canopy_pts, dtype=float)
+    out = {}
+    for side in ("left", "right"):
+        xs = np.empty(0)
+        if pts.ndim == 2 and pts.shape[0]:
+            mask = pts[:, 1] > split_y if side == "left" else pts[:, 1] <= split_y
+            xs = np.sort(pts[mask, 0])
+            xs = xs[(xs >= x_min) & (xs <= x_max)]
+        if xs.size == 0:
+            out[side] = {"open_m": 0.0, "open_from": None, "open_to": None, "end_x": None}
+            continue
+        edges = np.concatenate(([x_min], xs))   # every gap here ends at a real point
+        gaps = np.diff(edges)
+        k = int(np.argmax(gaps))
+        out[side] = {"open_m": float(gaps[k]), "open_from": float(edges[k]),
+                     "open_to": float(edges[k + 1]), "end_x": float(xs[-1])}
+    return out
+
+
 class RowLineFit:
     """Rolling k-means + RANSAC row-line model. See module docstring.
 
@@ -310,6 +347,7 @@ class RowLineFit:
         self.last_ground = None  # plane mode: last (a, b, c) of z = a*x + b*y + c
         self._pose_buf = deque(maxlen=self.window_size)   # (scan_i, xy) -- the ROBOT's own travel
         self.last_debug = {}
+        self.last_canopy = np.empty((0, 3))   # this scan's canopy slice, for diagnostics (side_openings)
 
     def reset(self):
         """Drop accumulated history (call when leaving FOLLOWING / re-acquiring)."""
@@ -617,6 +655,7 @@ class RowLineFit:
         self._scan_i += 1
         self._fit_cache = None
         canopy = self.slice_canopy(pts_xyz)
+        self.last_canopy = canopy
         if canopy.shape[0]:
             xy = canopy[:, :2]
             if xy.shape[0] > self.max_cluster_points:
