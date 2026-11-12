@@ -23,9 +23,10 @@
     Hands-free hold while measuring (another terminal; "data: false" resumes):
       rostopic pub -1 /row_follower_v3/pause std_msgs/Bool "data: true"
 
-    Remove the UM7 gyro's yaw drift from the odometry (learned while parked; the node holds
-    still for up to 4 s at startup to learn it):
-      roslaunch husky_custom_sim row_follower_v3.launch drift_correct:=true
+    The UM7 gyro's yaw drift is removed from the odometry by default (learned while parked;
+    the node holds still for up to 4 s at startup to learn it). To run uncorrected, e.g. for
+    an A/B comparison (and replay that bag without the drift-correct flag):
+      roslaunch husky_custom_sim row_follower_v3.launch drift_correct:=false
 
     SAFETY: this node drives the robot. Keep the PS4 dead-man's switch ready.
   -->
@@ -35,7 +36,7 @@
   <arg name="max_angular" default="0.08"/>
   <arg name="target_frame" default="base_link"/>
   <arg name="obstacle_stop" default="true"/>
-  <arg name="drift_correct" default="false"/>
+  <arg name="drift_correct" default="true"/>
   <arg name="stall_reset_sec" default="1.0"/>
   <!-- Optional per-run overrides for values that change between sections / environments -->
   <arg name="roi_y_abs_max" default=""/>

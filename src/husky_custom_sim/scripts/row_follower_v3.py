@@ -154,10 +154,11 @@ class RowFollowerV3:
         self.obstacle_gate = safety.ObstacleGate(
             self.obstacle_cfg["min_points"], self.obstacle_cfg["trigger_scans"], self.obstacle_cfg["clear_scans"])
 
-        # Gyro drift correction (odom_drift.py). Off by default until tape-measure ground
-        # truth (E2) compares it on the robot. When on, the node holds still for up to
-        # startup_hold_sec so the drift is learned before it drives.
-        self.drift_correct = bool(rospy.get_param("~drift_correct", False))
+        # Gyro drift correction (odom_drift.py). On by default since the 2026-11-06 same-day
+        # A/B: fix off, the robot drove 2.8 cm right of center; fix on, 0.4 cm (wall fit).
+        # The node holds still for up to startup_hold_sec so the drift is learned before
+        # it drives. Pass drift_correct:=false to reproduce the uncorrected behavior.
+        self.drift_correct = bool(rospy.get_param("~drift_correct", True))
         self.startup_hold_sec = float(rospy.get_param("~startup_hold_sec", 4.0))
         # After a gap in scans longer than this the buffered centroids are stale and the
         # odometry yaw has drifted meanwhile (2026-11-03: a 38.7 s LiDAR dropout, then a
